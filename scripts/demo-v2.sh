@@ -134,8 +134,9 @@ echo -e "  ${YELLOW}⚡  Resetting sequencer — wiping chain state for a clean 
 pkill -f sequencer_runner 2>/dev/null || true
 sleep 2
 
-rm -rf "${LSSA_DIR}/sequencer_runner/rocksdb" "${LSSA_DIR}/sequencer_runner/mempool" \
-       "${LSSA_DIR}/rocksdb" "${LSSA_DIR}/mempool"
+# Nuke ALL rocksdb/mempool dirs the sequencer might use
+find "${LSSA_DIR}" -name rocksdb -type d -exec rm -rf {} + 2>/dev/null || true
+find "${LSSA_DIR}" -name mempool -type d -exec rm -rf {} + 2>/dev/null || true
 cp "${NSSA_WALLET_HOME_DIR}/storage.json" "${NSSA_WALLET_HOME_DIR}/storage.json.bak" 2>/dev/null || true
 rm -f "${NSSA_WALLET_HOME_DIR}/storage.json"
 
@@ -144,9 +145,9 @@ if command -v python3 &>/dev/null && [ -f "${NSSA_WALLET_HOME_DIR}/wallet_config
 import json, sys
 p = '${NSSA_WALLET_HOME_DIR}/wallet_config.json'
 with open(p) as f: c = json.load(f)
-c['seq_poll_timeout_millis'] = 3000
-c['seq_tx_poll_max_blocks'] = 30
-c['seq_poll_max_retries'] = 20
+c['seq_poll_timeout_millis'] = 5000
+c['seq_tx_poll_max_blocks'] = 60
+c['seq_poll_max_retries'] = 40
 with open(p,'w') as f: json.dump(c, f, indent=4)
 print('  Wallet poll config patched for faster confirmations')
 "
