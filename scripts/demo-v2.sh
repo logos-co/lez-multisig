@@ -448,7 +448,7 @@ echo -e "\n  ${CYAN}$ ${BOLD}registry fetch-idl --cid $IDL_CID${RESET}"
 "$REGISTRY_CLI" fetch-idl --cid "$IDL_CID" 2>&1 || true
 
 # Save raw IDL to a file for use in Step 6
-curl -sf "$STORAGE_URL/api/codex/v1/data/$IDL_CID/network/stream" > "$DOWNLOADED_IDL" \
+curl -sf "$STORAGE_URL/api/storage/v1/data/$IDL_CID/network/stream" > "$DOWNLOADED_IDL" \
   || err "Failed to download IDL from storage"
 
 echo ""
