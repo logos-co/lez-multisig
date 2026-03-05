@@ -2537,11 +2537,12 @@ checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
 [[package]]
 name = "lez-cli"
 version = "0.1.0"
-source = "git+https://github.com/jimmy-claw/lez-framework.git?rev=7b2104b#7b2104b1cae648bc76d66f833a06261ef5243ef4"
+source = "git+https://github.com/jimmy-claw/lez-framework.git?rev=eed4ad7#eed4ad7bbda2322a5972497caec14f9a1f191d96"
 dependencies = [
  "base58",
  "borsh",
- "lez-framework-core 0.1.0 (git+https://github.com/jimmy-claw/lez-framework.git?rev=7b2104b)",
+ "bytemuck",
+ "lez-framework-core 0.1.0 (git+https://github.com/jimmy-claw/lez-framework.git?rev=eed4ad7)",
  "nssa",
  "nssa_core",
  "risc0-zkvm",
@@ -2565,11 +2566,11 @@ dependencies = [
 [[package]]
 name = "lez-framework"
 version = "0.1.0"
-source = "git+https://github.com/jimmy-claw/lez-framework.git?rev=7b2104b#7b2104b1cae648bc76d66f833a06261ef5243ef4"
+source = "git+https://github.com/jimmy-claw/lez-framework.git?rev=eed4ad7#eed4ad7bbda2322a5972497caec14f9a1f191d96"
 dependencies = [
  "borsh",
- "lez-framework-core 0.1.0 (git+https://github.com/jimmy-claw/lez-framework.git?rev=7b2104b)",
- "lez-framework-macros 0.1.0 (git+https://github.com/jimmy-claw/lez-framework.git?rev=7b2104b)",
+ "lez-framework-core 0.1.0 (git+https://github.com/jimmy-claw/lez-framework.git?rev=eed4ad7)",
+ "lez-framework-macros 0.1.0 (git+https://github.com/jimmy-claw/lez-framework.git?rev=eed4ad7)",
  "nssa_core",
 ]
 
@@ -2589,7 +2590,7 @@ dependencies = [
 [[package]]
 name = "lez-framework-core"
 version = "0.1.0"
-source = "git+https://github.com/jimmy-claw/lez-framework.git?rev=7b2104b#7b2104b1cae648bc76d66f833a06261ef5243ef4"
+source = "git+https://github.com/jimmy-claw/lez-framework.git?rev=eed4ad7#eed4ad7bbda2322a5972497caec14f9a1f191d96"
 dependencies = [
  "borsh",
  "nssa_core",
@@ -2613,7 +2614,7 @@ dependencies = [
 [[package]]
 name = "lez-framework-macros"
 version = "0.1.0"
-source = "git+https://github.com/jimmy-claw/lez-framework.git?rev=7b2104b#7b2104b1cae648bc76d66f833a06261ef5243ef4"
+source = "git+https://github.com/jimmy-claw/lez-framework.git?rev=eed4ad7#eed4ad7bbda2322a5972497caec14f9a1f191d96"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3403,7 +3404,7 @@ name = "multisig_program"
 version = "0.1.0"
 dependencies = [
  "borsh",
- "lez-framework 0.1.0 (git+https://github.com/jimmy-claw/lez-framework.git?rev=7b2104b)",
+ "lez-framework 0.1.0 (git+https://github.com/jimmy-claw/lez-framework.git?rev=eed4ad7)",
  "multisig_core",
  "nssa_core",
  "risc0-zkvm",
