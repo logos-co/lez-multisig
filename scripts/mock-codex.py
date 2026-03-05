@@ -33,7 +33,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args): pass
 
     def do_POST(self):
-        if self.path == '/api/codex/v1/data':
+        if self.path in ('/api/codex/v1/data', '/api/storage/v1/data'):
             length = int(self.headers.get('Content-Length', 0))
             raw = self.rfile.read(length)
             content_type = self.headers.get('Content-Type', '')
@@ -48,7 +48,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(404); self.end_headers()
 
     def do_GET(self):
-        if self.path.startswith('/api/codex/v1/data/'):
+        if self.path.startswith('/api/codex/v1/data/') or self.path.startswith('/api/storage/v1/data/'):
             parts = self.path.split('/')
             cid = parts[5] if len(parts) > 5 else ''
             if cid and cid in store:
