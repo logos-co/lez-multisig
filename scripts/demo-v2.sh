@@ -48,7 +48,7 @@ DEMO_WALLET_DIR="$MULTISIG_DIR/demo-wallet"
 export NSSA_WALLET_HOME_DIR="${NSSA_WALLET_HOME_DIR:-$DEMO_WALLET_DIR}"
 mkdir -p "$NSSA_WALLET_HOME_DIR"
 
-STORAGE_URL="http://127.0.0.1:8080"
+STORAGE_URL="http://127.0.0.1:8081"
 MOCK_CODEX_PY="$MULTISIG_DIR/scripts/mock-codex.py"
 TOKEN_IDL_LOCAL="$MULTISIG_DIR/scripts/token-idl.json"
 MULTISIG_IDL="$MULTISIG_DIR/lez-multisig-ffi/src/multisig_idl.json"
@@ -176,7 +176,7 @@ if curl -s --max-time 2 "$STORAGE_URL/api/storage/v1/debug/info" -o /dev/null 2>
 elif command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
   docker kill $(docker ps -q) 2>/dev/null || true
   mkdir -p "$CODEX_DATADIR"
-  nohup docker run --rm     -v "$CODEX_DATADIR":/datadir     -p 8080:8080     --entrypoint /usr/local/bin/storage     codexstorage/nim-codex:latest     --data-dir=/datadir --nat=none     --api-cors-origin="*" --api-bindaddr=0.0.0.0 --api-port=8080     > /tmp/codex.log 2>&1 &
+  nohup docker run --rm     -v "$CODEX_DATADIR":/datadir     -p 8081:8080     --entrypoint /usr/local/bin/storage     codexstorage/nim-codex:latest     --data-dir=/datadir --nat=none     --api-cors-origin="*" --api-bindaddr=0.0.0.0 --api-port=8080     > /tmp/codex.log 2>&1 &
   echo "  Waiting for Logos Storage node..."
   for i in $(seq 1 15); do
     curl -s --max-time 1 "$STORAGE_URL/api/storage/v1/debug/info" -o /dev/null 2>/dev/null && break

@@ -65,6 +65,6 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(b'{"status":"ok"}')
 
 if __name__ == '__main__':
-    s = HTTPServer(('127.0.0.1', 8080), Handler)
-    print('Mock Codex running on :8080')
+    s = HTTPServer(("127.0.0.1", 8081), Handler)
+    print('Mock Codex running on :8081')
     s.serve_forever()
