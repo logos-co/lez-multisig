@@ -61,7 +61,7 @@
 
           # Pre-built NSSA program method binaries (needed by nssa build.rs)
           nssaProgramMethods = pkgs.fetchurl {
-            url = "https://github.com/jimmy-claw/lez-registry/releases/download/circuits-v0.1.0/nssa-program-methods.tar.gz";
+            url = "https://github.com/jimmy-claw/spelbook/releases/download/circuits-v0.1.0/nssa-program-methods.tar.gz";
             sha256 = "a40ee19678cb44b07167dbe7ccc3e7279585d7fb6182831d792c03e6ad2b64d5";
           };
 

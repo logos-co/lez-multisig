@@ -145,9 +145,9 @@ if command -v python3 &>/dev/null && [ -f "${NSSA_WALLET_HOME_DIR}/wallet_config
 import json, sys
 p = '${NSSA_WALLET_HOME_DIR}/wallet_config.json'
 with open(p) as f: c = json.load(f)
-c['seq_poll_timeout_millis'] = 2000
-c['seq_tx_poll_max_blocks'] = 10
-c['seq_poll_max_retries'] = 10
+c['seq_poll_timeout_millis'] = 3000
+c['seq_tx_poll_max_blocks'] = 30
+c['seq_poll_max_retries'] = 20
 with open(p,'w') as f: json.dump(c, f, indent=4)
 print('  Wallet poll config patched for faster confirmations')
 "
@@ -277,7 +277,7 @@ run "registry register --name lez-token --version 0.1.0 ..."
   && ok "lez-token registered" \
   || err "Registration failed — check output above"
 
-sleep 2
+sleep 10
 
 echo ""
 echo "  Registering multisig program..."
@@ -743,5 +743,5 @@ echo -e "  • Multisig provides trustless M-of-N governance"
 echo -e "  • ZK proofs verified — no trusted executor"
 echo ""
 echo -e "  ${DIM}Spec: $MULTISIG_DIR/SPEC.md${RESET}"
-echo -e "  ${DIM}Repo: https://github.com/jimmy-claw/lez-multisig-framework${RESET}"
+echo -e "  ${DIM}Repo: https://github.com/logos-co/lez-multisig-framework${RESET}"
 echo ""

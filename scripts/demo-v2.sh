@@ -29,7 +29,7 @@ set -euo pipefail
 # ── Paths ──────────────────────────────────────────────────────────────────
 
 LSSA_DIR="${LSSA_DIR:-$HOME/lssa}"
-MULTISIG_DIR="${MULTISIG_DIR:-$HOME/lez-multisig-framework}"
+MULTISIG_DIR="${MULTISIG_DIR:-$HOME/lez-multisig}"
 REGISTRY_DIR="${REGISTRY_DIR:-$HOME/lez-registry}"
 
 WALLET="$LSSA_DIR/target/release/wallet"
@@ -655,5 +655,5 @@ echo -e "  • 2-of-3 threshold enforced — trustless M-of-N governance"
 echo -e "  • ZK proofs verified — no trusted executor"
 echo ""
 echo -e "  ${DIM}Spec: $MULTISIG_DIR/SPEC.md${RESET}"
-echo -e "  ${DIM}Repo: https://github.com/jimmy-claw/lez-multisig-framework${RESET}"
+echo -e "  ${DIM}Repo: https://github.com/logos-co/lez-multisig${RESET}"
 echo ""
