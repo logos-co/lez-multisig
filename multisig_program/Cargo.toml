@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 multisig_core = { path = "../multisig_core" }
 nssa_core.workspace = true
-lez-framework = { git = "https://github.com/jimmy-claw/lez-framework.git", rev = "eed4ad7" }
+spel-framework = { path = "../../spel/spel-framework" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 borsh.workspace = true
 risc0-zkvm.workspace = true
