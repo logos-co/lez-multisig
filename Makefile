@@ -64,9 +64,9 @@ generate-idl: ## Regenerate IDL from Rust annotations in lib.rs
 generate-ffi: ## Regenerate FFI client (multisig.rs) from IDL
 	@echo "🔨 Generating FFI client from $(IDL_JSON)..."
 	@mkdir -p /tmp/lez-ffi-gen
-	source ~/.cargo/env && lez-client-gen --idl $(IDL_JSON) --out-dir /tmp/lez-ffi-gen || \
-		(echo "ERROR: lez-client-gen not found. Run: make install-tools" && exit 1)
-	@# Prepend generated-file header, then append lez-client-gen output
+	source ~/.cargo/env && spel-client-gen --idl $(IDL_JSON) --out-dir /tmp/lez-ffi-gen || \
+		(echo "ERROR: spel-client-gen not found. Run: make install-tools" && exit 1)
+	@# Prepend generated-file header, then append spel-client-gen output
 	@echo "// GENERATED FILE — do not edit manually. Run 'make generate' to regenerate from Rust annotations." > $(FFI_RS)
 	@cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> $(FFI_RS)
 	@echo "✅ FFI client written to $(FFI_RS)"
@@ -90,7 +90,7 @@ help: ## Show this help
 	@echo "Multisig Program — Make Targets"
 	@echo ""
 	@echo "  Code Generation (start here after changing lib.rs):"
-	@echo "  make install-tools         Install lez-client-gen tool (first-time setup)"
+	@echo "  make install-tools         Install spel-client-gen tool (first-time setup)"
 	@echo "  make generate              Regen IDL + FFI client from lib.rs annotations"
 	@echo "  make generate-idl          Regen IDL only"
 	@echo "  make generate-ffi          Regen FFI client only (requires IDL)"
