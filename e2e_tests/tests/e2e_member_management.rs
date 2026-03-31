@@ -85,7 +85,7 @@ async fn submit_tx_expect_failure(client: &SequencerClient, tx: PublicTransactio
     }
 }
 
-async fn get_nonce(client: &SequencerClient, account_id: AccountId) -> Nonce {
+async fn get_nonce(client: &SequencerClient, account_id: AccountId) -> u128 {
     client.get_account(account_id).await
         .map(|r| r.nonce.0)
         .unwrap_or(0)
@@ -130,7 +130,7 @@ async fn propose_approve_execute_config(
     let msg = Message::try_new(
         program_id,
         vec![multisig_state_id, proposer_id, proposal_pda],
-        vec![nonce],
+        vec![nssa_core::account::Nonce(nonce)],
         instruction,
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[proposer_key]);
@@ -144,7 +144,7 @@ async fn propose_approve_execute_config(
         let msg = Message::try_new(
             program_id,
             vec![multisig_state_id, approver_id, proposal_pda],
-            vec![nonce],
+            vec![nssa_core::account::Nonce(nonce)],
             Instruction::Approve { create_key: *create_key, proposal_index },
         ).unwrap();
         let ws = WitnessSet::for_message(&msg, &[approver_key]);
@@ -158,7 +158,7 @@ async fn propose_approve_execute_config(
     let msg = Message::try_new(
         program_id,
         vec![multisig_state_id, executor_id, proposal_pda],
-        vec![nonce],
+        vec![nssa_core::account::Nonce(nonce)],
         Instruction::Execute { create_key: *create_key, proposal_index },
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[proposer_key]);
@@ -277,7 +277,7 @@ async fn test_member_management() {
     let msg = Message::try_new(
         program_id,
         vec![multisig_state_id, m1, proposal_pda],
-        vec![nonce],
+        vec![nssa_core::account::Nonce(nonce)],
         Instruction::ProposeRemoveMember { member: *m3.value(), create_key, proposal_index: 4 },
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[&key1]);
@@ -290,7 +290,7 @@ async fn test_member_management() {
         let msg = Message::try_new(
             program_id,
             vec![multisig_state_id, id, proposal_pda],
-            vec![nonce],
+            vec![nssa_core::account::Nonce(nonce)],
             Instruction::Approve { create_key, proposal_index: 4 },
         ).unwrap();
         let ws = WitnessSet::for_message(&msg, &[key]);
@@ -303,7 +303,7 @@ async fn test_member_management() {
     let msg = Message::try_new(
         program_id,
         vec![multisig_state_id, m1, proposal_pda],
-        vec![nonce],
+        vec![nssa_core::account::Nonce(nonce)],
         Instruction::Execute { create_key, proposal_index: 4 },
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[&key1]);
