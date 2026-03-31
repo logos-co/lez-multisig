@@ -75,9 +75,9 @@ async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
     }
 }
 
-async fn get_nonce(client: &SequencerClient, account_id: AccountId) -> u128 {
+async fn get_nonce(client: &SequencerClient, account_id: AccountId) -> Nonce {
     client.get_account(account_id).await
-        .map(|r| r.nonce)
+        .map(|r| r.nonce.0)
         .unwrap_or(0)
 }
 
