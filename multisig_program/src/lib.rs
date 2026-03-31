@@ -5,11 +5,11 @@ pub mod approve;
 pub mod reject;
 pub mod execute;
 
-use nssa_core::program::{InstructionData, ProgramId};
+use nssa_core::program::{ProgramId};
 use multisig_core::ConfigAction;
-use lez_framework::prelude::*;
+use spel_framework::prelude::*;
 
-/// Multisig program using #[lez_program] macro.
+/// Multisig program using #[spel_program] macro.
 /// Uses external multisig_core::Instruction enum for dispatch.
 #[lez_program(instruction = "multisig_core::Instruction")]
 mod multisig_program {
@@ -25,13 +25,13 @@ mod multisig_program {
         create_key: [u8; 32],
         threshold: u8,
         members: Vec<[u8; 32]>,
-    ) -> LezResult {
+    ) -> SpelResult {
         let accounts: Vec<AccountWithMetadata> = std::iter::once(multisig_state)
             .chain(member_accounts.into_iter())
             .collect();
         let (post_states, chained_calls) =
             crate::create_multisig::handle(&accounts, &create_key, threshold, &members);
-        Ok(LezOutput { post_states, chained_calls })
+        Ok(SpelOutput { post_states, chained_calls })
     }
 
     /// Propose a new transaction.
@@ -52,7 +52,7 @@ mod multisig_program {
         authorized_indices: Vec<u8>,
         create_key: [u8; 32],
         proposal_index: u64,
-    ) -> LezResult {
+    ) -> SpelResult {
         let accounts = vec![multisig_state, proposer, proposal];
         let (post_states, chained_calls) = crate::propose::handle(
             &accounts,
@@ -62,7 +62,7 @@ mod multisig_program {
             &pda_seeds,
             &authorized_indices,
         );
-        Ok(LezOutput { post_states, chained_calls })
+        Ok(SpelOutput { post_states, chained_calls })
     }
 
     /// Approve an existing proposal.
@@ -78,11 +78,11 @@ mod multisig_program {
         proposal: AccountWithMetadata,
         proposal_index: u64,
         create_key: [u8; 32],
-    ) -> LezResult {
+    ) -> SpelResult {
         let accounts = vec![multisig_state, approver, proposal];
         let (post_states, chained_calls) =
             crate::approve::handle(&accounts, proposal_index);
-        Ok(LezOutput { post_states, chained_calls })
+        Ok(SpelOutput { post_states, chained_calls })
     }
 
     /// Reject an existing proposal.
@@ -98,11 +98,11 @@ mod multisig_program {
         proposal: AccountWithMetadata,
         proposal_index: u64,
         create_key: [u8; 32],
-    ) -> LezResult {
+    ) -> SpelResult {
         let accounts = vec![multisig_state, rejector, proposal];
         let (post_states, chained_calls) =
             crate::reject::handle(&accounts, proposal_index);
-        Ok(LezOutput { post_states, chained_calls })
+        Ok(SpelOutput { post_states, chained_calls })
     }
 
     /// Execute a fully-approved proposal.
@@ -119,12 +119,12 @@ mod multisig_program {
         target_accounts: Vec<AccountWithMetadata>,
         proposal_index: u64,
         create_key: [u8; 32],
-    ) -> LezResult {
+    ) -> SpelResult {
         let mut accounts = vec![multisig_state, executor, proposal];
         accounts.extend(target_accounts);
         let (post_states, chained_calls) =
             crate::execute::handle(&accounts, proposal_index);
-        Ok(LezOutput { post_states, chained_calls })
+        Ok(SpelOutput { post_states, chained_calls })
     }
 
     /// Propose adding a new member.
@@ -141,13 +141,13 @@ mod multisig_program {
         new_member: [u8; 32],
         create_key: [u8; 32],
         proposal_index: u64,
-    ) -> LezResult {
+    ) -> SpelResult {
         let accounts = vec![multisig_state, proposer, proposal];
         let (post_states, chained_calls) = crate::propose_config::handle(
             &accounts,
             ConfigAction::AddMember { new_member },
         );
-        Ok(LezOutput { post_states, chained_calls })
+        Ok(SpelOutput { post_states, chained_calls })
     }
 
     /// Propose removing a member.
@@ -164,13 +164,13 @@ mod multisig_program {
         member: [u8; 32],
         create_key: [u8; 32],
         proposal_index: u64,
-    ) -> LezResult {
+    ) -> SpelResult {
         let accounts = vec![multisig_state, proposer, proposal];
         let (post_states, chained_calls) = crate::propose_config::handle(
             &accounts,
             ConfigAction::RemoveMember { member },
         );
-        Ok(LezOutput { post_states, chained_calls })
+        Ok(SpelOutput { post_states, chained_calls })
     }
 
     /// Propose changing the threshold.
@@ -187,13 +187,13 @@ mod multisig_program {
         new_threshold: u8,
         create_key: [u8; 32],
         proposal_index: u64,
-    ) -> LezResult {
+    ) -> SpelResult {
         let accounts = vec![multisig_state, proposer, proposal];
         let (post_states, chained_calls) = crate::propose_config::handle(
             &accounts,
             ConfigAction::ChangeThreshold { new_threshold },
         );
-        Ok(LezOutput { post_states, chained_calls })
+        Ok(SpelOutput { post_states, chained_calls })
     }
 }
 

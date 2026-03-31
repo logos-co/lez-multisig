@@ -44,17 +44,17 @@ endef
 # Source of truth: multisig_program/src/lib.rs (Rust macro annotations)
 # Pipeline: lib.rs → multisig_idl.json → multisig.rs
 
-LEZ_FW_GIT  := https://github.com/jimmy-claw/lez-framework.git
-LEZ_FW_BRANCH := main
+SPEL_FW_GIT  := https://github.com/logos-co/spel.git
+SPEL_FW_BRANCH := main
 IDL_JSON    := lez-multisig-ffi/src/multisig_idl.json
 FFI_RS      := lez-multisig-ffi/src/multisig.rs
 GENERATE_IDL_BIN := methods/guest/Cargo.toml
 
 .PHONY: generate generate-idl generate-ffi check-generated install-tools
 
-install-tools: ## Install lez-client-gen from lez-framework (required for generate-ffi)
-	source ~/.cargo/env && cargo install --git $(LEZ_FW_GIT) --branch $(LEZ_FW_BRANCH) lez-client-gen --locked 2>/dev/null || \
-	cargo install --git $(LEZ_FW_GIT) --branch $(LEZ_FW_BRANCH) lez-client-gen
+install-tools: ## Install spel-client-gen from spel framework (required for generate-ffi)
+	source ~/.cargo/env && cargo install --git $(SPEL_FW_GIT) --branch $(SPEL_FW_BRANCH) spel-client-gen --locked 2>/dev/null || \
+	cargo install --git $(SPEL_FW_GIT) --branch $(SPEL_FW_BRANCH) spel-client-gen
 
 generate-idl: ## Regenerate IDL from Rust annotations in lib.rs
 	@echo "🔨 Generating IDL from multisig_program/src/lib.rs..."
