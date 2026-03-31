@@ -1,1 +1,1 @@
-lez_framework::generate_idl!("../../multisig_program/src/lib.rs");
+spel_framework::generate_idl!("../../multisig_program/src/lib.rs");
