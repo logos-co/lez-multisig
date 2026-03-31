@@ -8,7 +8,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RISC0_VERSION: "3.0.5"
-  LSSA_REF: "767b5afd388c7981bcdf6f5b5c80159607e07e5b"
+  LSSA_REF: "ffcbc15972adbf557939bf3e2852af276422631b"
 
 jobs:
   unit-tests:
@@ -30,8 +30,8 @@ jobs:
       - name: Install spel-client-gen
         run: |
           cargo install \
-            --git https://github.com/logos-co/spel.git \
-            --branch main \
+            --git https://github.com/jimmy-claw/spel.git \
+            --branch jimmy/update-lssa-latest \
             spel-client-gen \
             --locked
 
@@ -99,8 +99,8 @@ jobs:
       - name: Install spel-client-gen
         run: |
           cargo install \
-            --git https://github.com/logos-co/spel.git \
-            --branch main \
+            --git https://github.com/jimmy-claw/spel.git \
+            --branch jimmy/update-lssa-latest \
             spel-client-gen \
             --locked
 
@@ -140,20 +140,20 @@ jobs:
         id: cache-seq
         uses: actions/cache@v4
         with:
-          path: /tmp/lssa/target/release/sequencer_runner
+          path: /tmp/lssa/target/release/sequencer_service
           key: sequencer-${{ steps.lssa-hash.outputs.hash }}
 
       - name: Build sequencer
         if: steps.cache-seq.outputs.cache-hit != 'true'
         run: |
           cd /tmp/lssa
-          cargo build --release --features standalone -p sequencer_runner
+          cargo build --release --features standalone -p sequencer_service
 
       - name: Start sequencer
         run: |
           cd /tmp/lssa
           rm -rf rocksdb
-          /tmp/lssa/target/release/sequencer_runner sequencer_runner/configs/debug > /tmp/sequencer.log 2>&1 &
+          /tmp/lssa/target/release/sequencer_service sequencer/service/configs/debug/sequencer_config.json > /tmp/sequencer.log 2>&1 &
           echo "Waiting for sequencer..."
           for i in $(seq 1 60); do
             CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3040 2>/dev/null || echo "000")

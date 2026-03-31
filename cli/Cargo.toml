@@ -8,5 +8,5 @@ name = "multisig"
 path = "src/bin/multisig.rs"
 
 [dependencies]
-spel = { git = "https://github.com/logos-co/spel.git", rev = "e45857e" }
+spel = { git = "https://github.com/jimmy-claw/spel.git", branch = "jimmy/update-lssa-latest" }
 tokio = { version = "1", features = ["full"] }
