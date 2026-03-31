@@ -23,7 +23,6 @@ use nssa::{
     program::Program,
     public_transaction::{Message, WitnessSet},
 };
-use nssa_core::program::PdaSeed;
 use multisig_core::{Instruction, MultisigState, Proposal, ProposalStatus};
 use lez_multisig_ffi::{
     compute_multisig_state_pda, compute_proposal_pda, compute_vault_pda, vault_pda_seed_bytes,
@@ -290,7 +289,7 @@ async fn test_multisig_token_transfer() {
     let msg = Message::try_new(
         multisig_program_id,
         vec![multisig_state_id, m1, proposal_id], // Propose expects 3 accounts now
-        vec![nonce_m1], // Only signer nonces
+        vec![nssa_core::account::Nonce(nonce_m1)], // Only signer nonces
         propose_instruction,
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[&key1]);
@@ -313,7 +312,7 @@ async fn test_multisig_token_transfer() {
     let msg = Message::try_new(
         multisig_program_id,
         vec![multisig_state_id, m2, proposal_id], // Approve expects 3 accounts now
-        vec![nonce_m2], // Only signer nonces
+        vec![nssa_core::account::Nonce(nonce_m2)], // Only signer nonces
         Instruction::Approve { create_key, proposal_index: 1 },
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[&key2]);
@@ -335,7 +334,7 @@ async fn test_multisig_token_transfer() {
     let msg = Message::try_new(
         multisig_program_id,
         vec![multisig_state_id, m1, proposal_id, vault_id, recipient_id],
-        vec![nonce_m1], // Only signer nonces
+        vec![nssa_core::account::Nonce(nonce_m1)], // Only signer nonces
         Instruction::Execute { create_key, proposal_index: 1 },
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[&key1]);
