@@ -24,6 +24,7 @@ use nssa::{
     public_transaction::{Message, WitnessSet},
 };
 use nssa_core::program::PdaSeed;
+use nssa_core::account::Nonce;
 use multisig_core::{Instruction, MultisigState, Proposal, ProposalStatus};
 use lez_multisig_ffi::{
     compute_multisig_state_pda, compute_proposal_pda, compute_vault_pda, vault_pda_seed_bytes,
@@ -99,8 +100,8 @@ async fn get_multisig_state(client: &SequencerClient, state_id: AccountId) -> Mu
 
 async fn get_proposal(client: &SequencerClient, proposal_id: AccountId) -> Proposal {
     let account = client.get_account(proposal_id).await.expect("Failed to get proposal");
-    println!("  [DEBUG] Proposal account program_owner: {:?}", account.account.program_owner);
-    println!("  [DEBUG] Proposal account balance: {}", account.account.balance);
+    println!("  [DEBUG] Proposal account program_owner: {:?}", account.program_owner);
+    println!("  [DEBUG] Proposal account balance: {}", account.balance);
     println!("  [DEBUG] Proposal account nonce: {}", account.nonce);
     let data: Vec<u8> = account.data.into();
     println!("  [DEBUG] Proposal raw data length: {} bytes", data.len());
@@ -163,7 +164,7 @@ async fn test_multisig_token_transfer() {
 
     // Deploy both (skip if already deployed)
     for (name, tx) in [("token", token_deploy_tx), ("multisig", multisig_deploy_tx)] {
-        match client.send_tx_program(tx).await {
+        match client.send_transaction(NSSATransaction::ProgramDeployment(tx)).await {
             Ok(r) => {
                 println!("  {} deployed: {}", name, hex::encode(r.0));
                 tokio::time::sleep(Duration::from_secs(BLOCK_WAIT_SECS)).await;

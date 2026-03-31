@@ -183,7 +183,7 @@ async fn test_member_management() {
         .unwrap_or_else(|_| panic!("Cannot read multisig binary at '{}'", multisig_path));
     let (deploy_tx, program_id) = deploy_program(multisig_bytecode);
 
-    match client.send_tx_program(deploy_tx).await {
+    match client.send_transaction(NSSATransaction::ProgramDeployment(deploy_tx)).await {
         Ok(r) => {
             println!("  Deployed: {}", hex::encode(r.0));
             tokio::time::sleep(Duration::from_secs(BLOCK_WAIT_SECS)).await;
