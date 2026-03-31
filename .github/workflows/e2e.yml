@@ -8,7 +8,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RISC0_VERSION: "3.0.5"
-  LSSA_REF: "767b5afd388c7981bcdf6f5b5c80159607e07e5b"
+  LSSA_REF: "main"
 
 jobs:
   unit-tests:
@@ -27,12 +27,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install spel-client-gen
+      - name: Install lez-client-gen
         run: |
           cargo install \
-            --git https://github.com/logos-co/spel.git \
+            --git https://github.com/jimmy-claw/lez-framework.git \
             --branch main \
-            spel-client-gen \
+            lez-client-gen \
             --locked
 
       - name: Generate IDL + FFI client
@@ -41,7 +41,7 @@ jobs:
         run: |
           cargo run -p lez-multisig-idl-gen > lez-multisig-ffi/src/multisig_idl.json
           mkdir -p /tmp/lez-ffi-gen
-          spel-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
+          lez-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
           echo '// GENERATED FILE — do not edit manually. Run make generate to regenerate.' > lez-multisig-ffi/src/multisig.rs
           cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
 
@@ -55,10 +55,9 @@ jobs:
           RISC0_SKIP_BUILD: "1"
         run: cargo build -p lez-multisig-ffi
 
-  e2e-tests:
-    name: E2E Tests
+  build-guest:
+    name: Build Guest Binary
     runs-on: ubuntu-latest
-    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -96,19 +95,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install spel-client-gen
+      - name: Install lez-client-gen
         run: |
           cargo install \
-            --git https://github.com/logos-co/spel.git \
+            --git https://github.com/jimmy-claw/lez-framework.git \
             --branch main \
-            spel-client-gen \
+            lez-client-gen \
             --locked
 
       - name: Generate IDL + FFI client
         run: |
           cargo run -p lez-multisig-idl-gen > lez-multisig-ffi/src/multisig_idl.json
           mkdir -p /tmp/lez-ffi-gen
-          spel-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
+          lez-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
           echo '// GENERATED FILE — do not edit manually. Run make generate to regenerate.' > lez-multisig-ffi/src/multisig.rs
           cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
 
@@ -123,14 +122,21 @@ jobs:
         if: steps.cache-guest.outputs.cache-hit != 'true'
         run: cargo risczero build --manifest-path methods/guest/Cargo.toml
 
-      - name: Clone LSSA
-        run: |
-          git init /tmp/lssa
-          cd /tmp/lssa
-          git remote add origin https://github.com/logos-blockchain/logos-execution-zone.git
-          git fetch --depth 1 origin ${{ env.LSSA_REF }}
-          git checkout FETCH_HEAD
+      - name: Upload guest binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: guest-binary
+          path: target/riscv32im-risc0-zkvm-elf/docker/multisig.bin
+          if-no-files-found: error
 
+  build-sequencer:
+    name: Build Sequencer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone LSSA
+        run: git clone --depth 1 --branch ${{ env.LSSA_REF }} https://github.com/logos-blockchain/lssa.git /tmp/lssa
 
       - name: Get LSSA commit hash
         id: lssa-hash
@@ -149,10 +155,101 @@ jobs:
           cd /tmp/lssa
           cargo build --release --features standalone -p sequencer_runner
 
+      - name: Upload sequencer binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sequencer-binary
+          path: /tmp/lssa/target/release/sequencer_runner
+          if-no-files-found: error
+
+      - name: Upload LSSA artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lssa-artifacts
+          path: /tmp/lssa/artifacts/
+          if-no-files-found: error
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    needs: [build-guest, build-sequencer]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install risc0 toolchain
+        run: |
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt: installing rzup..."
+            if curl -L --retry 3 --retry-delay 5 https://risczero.com/install | bash; then
+              break
+            fi
+            echo "rzup install script failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "$HOME/.risc0/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.risc0/bin:$PATH"
+          for attempt in 1 2 3; do
+            rzup install cargo-risczero ${{ env.RISC0_VERSION }} && break
+            sleep 15
+          done
+          for attempt in 1 2 3; do
+            rzup install r0vm ${{ env.RISC0_VERSION }} && break
+            sleep 15
+          done
+          rzup install rust
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "e2e"
+          cache-targets: true
+
+      - name: Install logos-blockchain-circuits
+        run: |
+          curl -sSL https://raw.githubusercontent.com/logos-blockchain/logos-blockchain/main/scripts/setup-logos-blockchain-circuits.sh | bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install lez-client-gen
+        run: |
+          cargo install \
+            --git https://github.com/jimmy-claw/lez-framework.git \
+            --branch main \
+            lez-client-gen \
+            --locked
+
+      - name: Generate IDL + FFI client
+        run: |
+          cargo run -p lez-multisig-idl-gen > lez-multisig-ffi/src/multisig_idl.json
+          mkdir -p /tmp/lez-ffi-gen
+          lez-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
+          echo '// GENERATED FILE — do not edit manually. Run make generate to regenerate.' > lez-multisig-ffi/src/multisig.rs
+          cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
+
+      - name: Download guest binary
+        uses: actions/download-artifact@v4
+        with:
+          name: guest-binary
+          path: target/riscv32im-risc0-zkvm-elf/docker/
+
+      - name: Download sequencer binary
+        uses: actions/download-artifact@v4
+        with:
+          name: sequencer-binary
+          path: /tmp/lssa/target/release/
+
+      - name: Download LSSA artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lssa-artifacts
+          path: /tmp/lssa/artifacts/
+
       - name: Start sequencer
         run: |
-          cd /tmp/lssa
-          rm -rf rocksdb
+          mkdir -p /tmp/lssa
+          chmod +x /tmp/lssa/target/release/sequencer_runner
+          rm -rf /tmp/lssa/rocksdb
           /tmp/lssa/target/release/sequencer_runner sequencer_runner/configs/debug > /tmp/sequencer.log 2>&1 &
           echo "Waiting for sequencer..."
           for i in $(seq 1 60); do
