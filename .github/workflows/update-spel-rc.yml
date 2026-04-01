@@ -1,0 +1,111 @@
+name: Update SPEL RC
+
+on:
+  # Trigger when SPEL publishes a new pre-release
+  repository_dispatch:
+    types: [spel-rc-published]
+  # Or manually
+  workflow_dispatch:
+    inputs:
+      spel_tag:
+        description: 'SPEL RC tag (e.g. v0.3.0-rc.1)'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  update-spel-rc:
+    name: Update SPEL to latest RC
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Resolve SPEL RC tag
+        id: spel
+        run: |
+          if [ -n "${{ github.event.inputs.spel_tag }}" ]; then
+            TAG="${{ github.event.inputs.spel_tag }}"
+          elif [ -n "${{ github.event.client_payload.tag }}" ]; then
+            TAG="${{ github.event.client_payload.tag }}"
+          else
+            # Fetch latest RC tag from SPEL repo
+            TAG=$(gh api repos/logos-co/spel/releases \
+              --jq '[.[] | select(.prerelease == true)] | first | .tag_name')
+          fi
+
+          echo "SPEL RC tag: $TAG"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update SPEL dependency in all Cargo.toml files
+        run: |
+          TAG="${{ steps.spel.outputs.tag }}"
+
+          # Update all Cargo.toml files that reference spel
+          for f in $(grep -rl 'logos-co/spel\|jimmy-claw/spel' --include="Cargo.toml" .); do
+            # Replace any existing git+tag or git+branch reference to spel
+            sed -i "s|git = \"https://github.com/[^\"]*spel[^\"]*\", tag = \"[^\"]*\"|git = \"https://github.com/logos-co/spel.git\", tag = \"${TAG}\"|g" "$f"
+            sed -i "s|git = \"https://github.com/[^\"]*spel[^\"]*\", branch = \"[^\"]*\"|git = \"https://github.com/logos-co/spel.git\", tag = \"${TAG}\"|g" "$f"
+            echo "Updated $f → $TAG"
+          done
+
+      - name: Verify changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            git diff --stat
+          fi
+
+      - name: Create update branch
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          TAG="${{ steps.spel.outputs.tag }}"
+          BRANCH="ci/spel-rc-${TAG}"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "ci: update SPEL dependency to ${TAG}"
+          git push origin "$BRANCH" --force
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+
+      - name: Open PR
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.spel.outputs.tag }}
+        run: |
+          # Close any existing RC update PRs
+          gh pr list --head "ci/spel-rc-" --json number --jq '.[].number' | \
+            xargs -I{} gh pr close {} --comment "Superseded by newer RC" 2>/dev/null || true
+
+          gh pr create \
+            --title "ci: update SPEL to ${TAG}" \
+            --base main \
+            --head "${BRANCH}" \
+            --body "Automated update of SPEL dependency to release candidate \`${TAG}\`.
+
+  CI will run full test suite against this RC. If tests pass, this RC is compatible with lez-multisig.
+
+  **SPEL RC:** https://github.com/logos-co/spel/releases/tag/${TAG}
+
+  > This PR was created automatically by the weekly RC workflow." \
+            --label "rc-update" 2>/dev/null || \
+          echo "PR creation failed (org permissions) — branch ${BRANCH} is ready for manual PR"
