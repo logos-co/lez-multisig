@@ -9,3 +9,4 @@ demo-wallet/
 lez-multisig-ffi/src/multisig_idl.json
 lez-multisig-ffi/src/multisig.rs
 lez-multisig-ffi/src/generated/
+multisig.json

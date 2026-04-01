@@ -1,6 +1,6 @@
 #![no_main]
 
-use nssa_core::program::{ProgramInput, read_nssa_inputs, write_nssa_outputs_with_chained_call};
+use nssa_core::program::{ProgramInput, ProgramOutput, read_nssa_inputs};
 use multisig_core::Instruction;
 
 risc0_zkvm::guest::entry!(main);
@@ -13,10 +13,11 @@ fn main() {
 
     let (post_states, chained_calls) = multisig_program::process(&pre_states, &instruction);
 
-    write_nssa_outputs_with_chained_call(
+    ProgramOutput::new(
         instruction_words,
         pre_states_clone,
         post_states,
-        chained_calls,
-    );
+    )
+    .with_chained_calls(chained_calls)
+    .write();
 }

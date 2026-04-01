@@ -17,7 +17,8 @@ use nssa::{
 };
 use multisig_core::{Instruction, MultisigState, Proposal, ProposalStatus};
 use lez_multisig_ffi::{compute_multisig_state_pda, compute_proposal_pda};
-use common::sequencer_client::SequencerClient;
+use sequencer_service_rpc::{SequencerClient, SequencerClientBuilder, RpcClient as _};
+use common::transaction::NSSATransaction;
 
 const BLOCK_WAIT_SECS: u64 = 15;
 
@@ -29,13 +30,13 @@ fn account_id_from_key(key: &PrivateKey) -> AccountId {
 fn sequencer_client() -> SequencerClient {
     let url = std::env::var("SEQUENCER_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:3040".to_string());
-    SequencerClient::new(url.parse().unwrap()).expect("Failed to create sequencer client")
+    SequencerClientBuilder::default().build(&url).expect("Failed to create sequencer client")
 }
 
 async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
-    let response = client.send_tx_public(tx).await.expect("Failed to submit tx");
-    let tx_hash = response.tx_hash.clone();
-    println!("  tx_hash: {}", tx_hash);
+    let response = client.send_transaction(NSSATransaction::Public(tx)).await.expect("Failed to submit tx");
+    let tx_hash = response;
+    println!("  tx_hash: {}", hex::encode(tx_hash.0));
 
     let max_wait = Duration::from_secs(BLOCK_WAIT_SECS * 3);
     let poll_interval = Duration::from_secs(3);
@@ -43,14 +44,14 @@ async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
 
     loop {
         tokio::time::sleep(poll_interval).await;
-        match client.get_transaction_by_hash(tx_hash.clone()).await {
-            Ok(resp) if resp.transaction.is_some() => {
+        match client.get_transaction(tx_hash.clone()).await {
+            Ok(resp) if resp.is_some() => {
                 println!("  ✅ tx included in block");
                 return;
             }
             _ => {
                 if start.elapsed() > max_wait {
-                    panic!("❌ Transaction {} not included after {:?}", tx_hash, max_wait);
+                    panic!("❌ Transaction {} not included after {:?}", hex::encode(tx_hash.0), max_wait);
                 }
             }
         }
@@ -60,18 +61,18 @@ async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
 /// Submit a tx that we expect to fail (not get included).
 /// Returns true if it was correctly rejected/not included.
 async fn submit_tx_expect_failure(client: &SequencerClient, tx: PublicTransaction) -> bool {
-    match client.send_tx_public(tx).await {
+    match client.send_transaction(NSSATransaction::Public(tx)).await {
         Err(_) => {
             println!("  ✅ Transaction rejected at submission (expected)");
             return true;
         }
         Ok(response) => {
-            let tx_hash = response.tx_hash.clone();
-            println!("  tx_hash: {} (expecting non-inclusion)", tx_hash);
+            let tx_hash = response;
+            println!("  tx_hash: {} (expecting non-inclusion)", hex::encode(tx_hash.0));
             // Wait a bit and check it wasn't included
             tokio::time::sleep(Duration::from_secs(BLOCK_WAIT_SECS * 2)).await;
-            match client.get_transaction_by_hash(tx_hash.clone()).await {
-                Ok(resp) if resp.transaction.is_some() => {
+            match client.get_transaction(tx_hash.clone()).await {
+                Ok(resp) if resp.is_some() => {
                     println!("  ❌ Transaction was unexpectedly included!");
                     false
                 }
@@ -86,19 +87,19 @@ async fn submit_tx_expect_failure(client: &SequencerClient, tx: PublicTransactio
 
 async fn get_nonce(client: &SequencerClient, account_id: AccountId) -> u128 {
     client.get_account(account_id).await
-        .map(|r| r.account.nonce)
+        .map(|r| r.nonce.0)
         .unwrap_or(0)
 }
 
 async fn get_multisig_state(client: &SequencerClient, state_id: AccountId) -> MultisigState {
     let account = client.get_account(state_id).await.expect("Failed to get multisig state");
-    let data: Vec<u8> = account.account.data.into();
+    let data: Vec<u8> = account.data.into();
     borsh::from_slice(&data).expect("Failed to deserialize multisig state")
 }
 
 async fn get_proposal(client: &SequencerClient, proposal_id: AccountId) -> Proposal {
     let account = client.get_account(proposal_id).await.expect("Failed to get proposal");
-    let data: Vec<u8> = account.account.data.into();
+    let data: Vec<u8> = account.data.into();
     borsh::from_slice(&data).expect("Failed to deserialize proposal")
 }
 
@@ -129,7 +130,7 @@ async fn propose_approve_execute_config(
     let msg = Message::try_new(
         program_id,
         vec![multisig_state_id, proposer_id, proposal_pda],
-        vec![nonce],
+        vec![nssa_core::account::Nonce(nonce)],
         instruction,
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[proposer_key]);
@@ -143,7 +144,7 @@ async fn propose_approve_execute_config(
         let msg = Message::try_new(
             program_id,
             vec![multisig_state_id, approver_id, proposal_pda],
-            vec![nonce],
+            vec![nssa_core::account::Nonce(nonce)],
             Instruction::Approve { create_key: *create_key, proposal_index },
         ).unwrap();
         let ws = WitnessSet::for_message(&msg, &[approver_key]);
@@ -157,7 +158,7 @@ async fn propose_approve_execute_config(
     let msg = Message::try_new(
         program_id,
         vec![multisig_state_id, executor_id, proposal_pda],
-        vec![nonce],
+        vec![nssa_core::account::Nonce(nonce)],
         Instruction::Execute { create_key: *create_key, proposal_index },
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[proposer_key]);
@@ -182,9 +183,9 @@ async fn test_member_management() {
         .unwrap_or_else(|_| panic!("Cannot read multisig binary at '{}'", multisig_path));
     let (deploy_tx, program_id) = deploy_program(multisig_bytecode);
 
-    match client.send_tx_program(deploy_tx).await {
+    match client.send_transaction(NSSATransaction::ProgramDeployment(deploy_tx)).await {
         Ok(r) => {
-            println!("  Deployed: {}", r.tx_hash);
+            println!("  Deployed: {}", hex::encode(r.0));
             tokio::time::sleep(Duration::from_secs(BLOCK_WAIT_SECS)).await;
         }
         Err(e) => println!("  Deploy skipped (already deployed): {}", e),
@@ -276,7 +277,7 @@ async fn test_member_management() {
     let msg = Message::try_new(
         program_id,
         vec![multisig_state_id, m1, proposal_pda],
-        vec![nonce],
+        vec![nssa_core::account::Nonce(nonce)],
         Instruction::ProposeRemoveMember { member: *m3.value(), create_key, proposal_index: 4 },
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[&key1]);
@@ -289,7 +290,7 @@ async fn test_member_management() {
         let msg = Message::try_new(
             program_id,
             vec![multisig_state_id, id, proposal_pda],
-            vec![nonce],
+            vec![nssa_core::account::Nonce(nonce)],
             Instruction::Approve { create_key, proposal_index: 4 },
         ).unwrap();
         let ws = WitnessSet::for_message(&msg, &[key]);
@@ -302,7 +303,7 @@ async fn test_member_management() {
     let msg = Message::try_new(
         program_id,
         vec![multisig_state_id, m1, proposal_pda],
-        vec![nonce],
+        vec![nssa_core::account::Nonce(nonce)],
         Instruction::Execute { create_key, proposal_index: 4 },
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[&key1]);
