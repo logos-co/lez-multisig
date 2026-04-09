@@ -178,29 +178,29 @@ jobs:
         with:
           name: guest-binary
           path: target/riscv32im-risc0-zkvm-elf/docker/
-      - name: Download sequencer binary
-        uses: actions/download-artifact@v4
+      - name: Download token.bin from LSSA
+        uses: actions/checkout@v4
         with:
-          name: sequencer-binary
-          path: /tmp/lssa/target/release/
+          repository: logos-blockchain/logos-execution-zone
+          ref: ${{ env.LSSA_REF }}
+          path: /tmp/lssa
+          sparse-checkout: |
+            artifacts/program_methods/token.bin
       - name: Get LSSA commit hash
         id: lssa-hash
-        run: echo "hash=767b5afd388c7981bcdf6f5b5c80159607e07e5b" >> $GITHUB_OUTPUT
+        run: echo "hash=$(git -C /tmp/lssa rev-parse HEAD)" >> $GITHUB_OUTPUT
       - name: Restore sequencer cache
         id: cache-seq
         uses: actions/cache@v4
         with:
           path: /tmp/lssa/target/release/sequencer_runner
           key: sequencer-${{ steps.lssa-hash.outputs.hash }}
-      - name: Setup LSSA
-        run: |
-          git init /tmp/lssa
-          cd /tmp/lssa
-          git remote add origin https://github.com/logos-blockchain/logos-execution-zone.git
-          git fetch --depth 1 origin ${{ env.LSSA_REF }}
-          git checkout FETCH_HEAD
-          mkdir -p /tmp/lssa/artifacts/program_methods
-          touch /tmp/lssa/artifacts/program_methods/token.bin
+      - name: Download sequencer binary
+        if: steps.cache-seq.outputs.cache-hit != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: sequencer-binary
+          path: /tmp/lssa/target/release/
       - name: Start sequencer
         run: |
           cd /tmp/lssa
