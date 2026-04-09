@@ -6,7 +6,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RISC0_VERSION: "3.0.5"
-  LSSA_REF: "767b5afd388c7981bcdf6f5b5c80159607e07e5b"
+  LSSA_REF: "ffcbc15972adbf557939bf3e2852af276422631b"
 
 jobs:
   unit-tests:
@@ -18,18 +18,21 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "unit"
+
       - name: Install logos-blockchain-circuits
         run: |
           curl -sSL https://raw.githubusercontent.com/logos-blockchain/logos-blockchain/main/scripts/setup-logos-blockchain-circuits.sh | bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Install spel-client-gen
         run: |
           cargo install \
-            --git https://github.com/logos-co/spel.git \
-            --branch main \
+            --git https://github.com/jimmy-claw/spel.git \
+            --branch jimmy/update-lssa-latest \
             spel-client-gen \
             --locked
+
       - name: Generate IDL + FFI client
         env:
           RISC0_SKIP_BUILD: "1"
@@ -39,10 +42,12 @@ jobs:
           spel-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
           echo '// GENERATED FILE — do not edit manually. Run make generate to regenerate.' > lez-multisig-ffi/src/multisig.rs
           cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
+
       - name: Run unit tests
         env:
           RISC0_SKIP_BUILD: "1"
         run: cargo test -p multisig_core -p multisig_program
+
       - name: Build FFI crate
         env:
           RISC0_SKIP_BUILD: "1"
@@ -55,6 +60,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install logos-blockchain-circuits
+        run: |
+          curl -sSL https://raw.githubusercontent.com/logos-blockchain/logos-blockchain/main/scripts/setup-logos-blockchain-circuits.sh | bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install spel-client-gen
+        run: |
+          cargo install \
+            --git https://github.com/jimmy-claw/spel.git \
+            --branch jimmy/update-lssa-latest \
+            spel-client-gen \
+            --locked
+
+      - name: Generate IDL + FFI client
+        env:
+          RISC0_SKIP_BUILD: "1"
+        run: |
+          cargo run -p lez-multisig-idl-gen > lez-multisig-ffi/src/multisig_idl.json
+          mkdir -p /tmp/lez-ffi-gen
+          spel-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
+          echo '// GENERATED FILE — do not edit manually. Run make generate to regenerate.' > lez-multisig-ffi/src/multisig.rs
+          cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
+
       - name: Install risc0 toolchain
         run: |
           for attempt in 1 2 3; do
@@ -76,24 +106,23 @@ jobs:
             sleep 15
           done
           rzup install rust
+
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "e2e"
           cache-targets: true
-      - name: Install logos-blockchain-circuits
-        run: |
-          curl -sSL https://raw.githubusercontent.com/logos-blockchain/logos-blockchain/main/scripts/setup-logos-blockchain-circuits.sh | bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Cache guest binary
         id: cache-guest
         uses: actions/cache@v4
         with:
           path: target/riscv32im-risc0-zkvm-elf/docker/multisig.bin
           key: guest-${{ hashFiles('multisig_core/src/**', 'multisig_program/src/**', 'methods/guest/**', 'Cargo.lock') }}
+
       - name: Build guest binary
         if: steps.cache-guest.outputs.cache-hit != 'true'
         run: cargo risczero build --manifest-path methods/guest/Cargo.toml
+
       - name: Upload guest binary
         uses: actions/upload-artifact@v4
         with:
@@ -107,11 +136,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+
       - name: Install logos-blockchain-circuits
         run: |
           curl -sSL https://raw.githubusercontent.com/logos-blockchain/logos-blockchain/main/scripts/setup-logos-blockchain-circuits.sh | bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Clone LSSA
         run: |
           git init /tmp/lssa
@@ -119,25 +150,29 @@ jobs:
           git remote add origin https://github.com/logos-blockchain/logos-execution-zone.git
           git fetch --depth 1 origin ${{ env.LSSA_REF }}
           git checkout FETCH_HEAD
+
       - name: Get LSSA commit hash
         id: lssa-hash
         run: echo "hash=$(git -C /tmp/lssa rev-parse HEAD)" >> $GITHUB_OUTPUT
+
       - name: Cache sequencer
         id: cache-seq
         uses: actions/cache@v4
         with:
-          path: /tmp/lssa/target/release/sequencer_runner
+          path: /tmp/lssa/target/release/sequencer_service
           key: sequencer-${{ steps.lssa-hash.outputs.hash }}
+
       - name: Build sequencer
         if: steps.cache-seq.outputs.cache-hit != 'true'
         run: |
           cd /tmp/lssa
-          cargo build --release --features standalone -p sequencer_runner
+          cargo build --release --features standalone -p sequencer_service
+
       - name: Upload sequencer binary
         uses: actions/upload-artifact@v4
         with:
           name: sequencer-binary
-          path: /tmp/lssa/target/release/sequencer_runner
+          path: /tmp/lssa/target/release/sequencer_service
 
   e2e-tests:
     name: E2E Tests
@@ -147,6 +182,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install logos-blockchain-circuits
+        run: |
+          curl -sSL https://raw.githubusercontent.com/logos-blockchain/logos-blockchain/main/scripts/setup-logos-blockchain-circuits.sh | bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install spel-client-gen
+        run: |
+          cargo install \
+            --git https://github.com/jimmy-claw/spel.git \
+            --branch jimmy/update-lssa-latest \
+            spel-client-gen \
+            --locked
+
+      - name: Generate IDL + FFI client
+        env:
+          RISC0_SKIP_BUILD: "1"
+        run: |
+          cargo run -p lez-multisig-idl-gen > lez-multisig-ffi/src/multisig_idl.json
+          mkdir -p /tmp/lez-ffi-gen
+          spel-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
+          echo '// GENERATED FILE — do not edit manually. Run make generate to regenerate.' > lez-multisig-ffi/src/multisig.rs
+          cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
+
       - name: Install risc0 toolchain
         run: |
           for attempt in 1 2 3; do
@@ -168,16 +228,18 @@ jobs:
             sleep 15
           done
           rzup install rust
-      - name: Install logos-blockchain-circuits
-        run: |
-          curl -sSL https://raw.githubusercontent.com/logos-blockchain/logos-blockchain/main/scripts/setup-logos-blockchain-circuits.sh | bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "e2e"
+          cache-targets: true
+
       - name: Download guest binary
         uses: actions/download-artifact@v4
         with:
           name: guest-binary
           path: target/riscv32im-risc0-zkvm-elf/docker/
+
       - name: Download token.bin from LSSA
         uses: actions/checkout@v4
         with:
@@ -186,26 +248,30 @@ jobs:
           path: /tmp/lssa
           sparse-checkout: |
             artifacts/program_methods/token.bin
+
       - name: Get LSSA commit hash
         id: lssa-hash
         run: echo "hash=$(git -C /tmp/lssa rev-parse HEAD)" >> $GITHUB_OUTPUT
+
       - name: Restore sequencer cache
         id: cache-seq
         uses: actions/cache@v4
         with:
-          path: /tmp/lssa/target/release/sequencer_runner
+          path: /tmp/lssa/target/release/sequencer_service
           key: sequencer-${{ steps.lssa-hash.outputs.hash }}
+
       - name: Download sequencer binary
         if: steps.cache-seq.outputs.cache-hit != 'true'
         uses: actions/download-artifact@v4
         with:
           name: sequencer-binary
           path: /tmp/lssa/target/release/
+
       - name: Start sequencer
         run: |
           cd /tmp/lssa
           rm -rf rocksdb
-          /tmp/lssa/target/release/sequencer_runner sequencer_runner/configs/debug > /tmp/sequencer.log 2>&1 &
+          /tmp/lssa/target/release/sequencer_service sequencer/service/configs/debug/sequencer_config.json > /tmp/sequencer.log 2>&1 &
           echo "Waiting for sequencer..."
           for i in $(seq 1 60); do
             CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3040 2>/dev/null || echo "000")
@@ -221,12 +287,14 @@ jobs:
             cat /tmp/sequencer.log
             exit 1
           fi
+
       - name: Run e2e tests
         env:
           MULTISIG_PROGRAM: ${{ github.workspace }}/target/riscv32im-risc0-zkvm-elf/docker/multisig.bin
           TOKEN_PROGRAM: /tmp/lssa/artifacts/program_methods/token.bin
           SEQUENCER_URL: http://127.0.0.1:3040
         run: cargo test -p lez-multisig-e2e -- --nocapture --test-threads=1
+
       - name: Upload sequencer logs
         if: failure()
         uses: actions/upload-artifact@v4
