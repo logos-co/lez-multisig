@@ -5289,9 +5289,9 @@ checksum = "f87165f0995f63a9fbeea62b64d10b4d9d8e78ec6d7d51fb2125fda7bb36788f"
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.10"
+version = "0.103.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df33b2b81ac578cabaf06b89b0631153a3f416b0a886e8a7a1707fb51abbd1ef"
+checksum = "20a6af516fea4b20eccceaf166e8aa666ac996208e8a644ce3ef5aa783bc7cd4"
 dependencies = [
  "ring",
  "rustls-pki-types",
@@ -5716,7 +5716,7 @@ dependencies = [
 [[package]]
 name = "spel"
 version = "0.2.0"
-source = "git+https://github.com/logos-co/spel.git?rev=5e2bf97#5e2bf97551f7cc9dd633a5a6fa4d22696fd39f44"
+source = "git+https://github.com/logos-co/spel.git?rev=31678b5#31678b54e4efbe187918e9e67ee6ca8fa17197de"
 dependencies = [
  "base58",
  "borsh",
@@ -5736,7 +5736,7 @@ dependencies = [
 [[package]]
 name = "spel-framework"
 version = "0.2.0"
-source = "git+https://github.com/logos-co/spel.git?rev=5e2bf97#5e2bf97551f7cc9dd633a5a6fa4d22696fd39f44"
+source = "git+https://github.com/logos-co/spel.git?rev=31678b5#31678b54e4efbe187918e9e67ee6ca8fa17197de"
 dependencies = [
  "borsh",
  "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
@@ -5747,7 +5747,7 @@ dependencies = [
 [[package]]
 name = "spel-framework-core"
 version = "0.2.0"
-source = "git+https://github.com/logos-co/spel.git?rev=5e2bf97#5e2bf97551f7cc9dd633a5a6fa4d22696fd39f44"
+source = "git+https://github.com/logos-co/spel.git?rev=31678b5#31678b54e4efbe187918e9e67ee6ca8fa17197de"
 dependencies = [
  "borsh",
  "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
@@ -5761,7 +5761,7 @@ dependencies = [
 [[package]]
 name = "spel-framework-macros"
 version = "0.2.0"
-source = "git+https://github.com/logos-co/spel.git?rev=5e2bf97#5e2bf97551f7cc9dd633a5a6fa4d22696fd39f44"
+source = "git+https://github.com/logos-co/spel.git?rev=31678b5#31678b54e4efbe187918e9e67ee6ca8fa17197de"
 dependencies = [
  "proc-macro2",
  "quote",
