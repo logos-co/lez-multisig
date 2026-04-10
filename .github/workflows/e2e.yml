@@ -8,7 +8,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RISC0_VERSION: "3.0.5"
-  LSSA_REF: "ffcbc15972adbf557939bf3e2852af276422631b"
+  LSSA_REF: "v0.2.0-rc1"
 
 jobs:
   unit-tests:
