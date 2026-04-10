@@ -12,6 +12,7 @@ use spel_framework::prelude::*;
 /// Multisig program using #[spel_program] macro.
 /// Uses external multisig_core::Instruction enum for dispatch.
 #[lez_program(instruction = "multisig_core::Instruction")]
+pub
 mod multisig_program {
     use super::*;
 
