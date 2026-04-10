@@ -1,0 +1,652 @@
+{
+  "accounts": [],
+  "errors": [],
+  "instruction_type": "multisig_core::Instruction",
+  "instructions": [
+    {
+      "accounts": [
+        {
+          "init": true,
+          "name": "multisig_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "arg",
+                "path": "create_key"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "member_accounts",
+          "rest": true,
+          "signer": false,
+          "writable": false
+        }
+      ],
+      "args": [
+        {
+          "name": "create_key",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "threshold",
+          "type": "u8"
+        },
+        {
+          "name": "members",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ],
+      "name": "create_multisig"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "multisig_state",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "arg",
+                "path": "create_key"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": true,
+          "name": "proposal",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "multisig_prop___"
+              },
+              {
+                "kind": "arg",
+                "path": "create_key"
+              },
+              {
+                "kind": "arg",
+                "path": "proposal_index"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "target_program_id",
+          "type": "program_id"
+        },
+        {
+          "name": "target_instruction_data",
+          "type": {
+            "vec": "u32"
+          }
+        },
+        {
+          "name": "target_account_count",
+          "type": "u8"
+        },
+        {
+          "name": "pda_seeds",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        },
+        {
+          "name": "authorized_indices",
+          "type": {
+            "vec": "u8"
+          }
+        },
+        {
+          "name": "create_key",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proposal_index",
+          "type": "u64"
+        },
+        {
+          "name": "members",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        },
+        {
+          "name": "vote_receipt",
+          "type": {
+            "vec": "u32"
+          }
+        },
+        {
+          "name": "nullifier",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ],
+      "name": "propose",
+      "pre_tx": {
+        "elf": "vote_circuit.bin",
+        "inputs": [
+          {
+            "name": "nsk",
+            "source": "wallet_nsk",
+            "type_": "bytes32"
+          },
+          {
+            "name": "members",
+            "source": "arg:members",
+            "type_": "vec_bytes32"
+          },
+          {
+            "name": "proposal_index",
+            "source": "arg:proposal_index",
+            "type_": "u64"
+          },
+          {
+            "name": "domain",
+            "source": "literal:propose",
+            "type_": "string"
+          }
+        ],
+        "outputs": [
+          "vote_receipt",
+          "nullifier"
+        ],
+        "signer_arg": "caller"
+      }
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "multisig_state",
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "proposal",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "multisig_prop___"
+              },
+              {
+                "kind": "arg",
+                "path": "create_key"
+              },
+              {
+                "kind": "arg",
+                "path": "proposal_index"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "proposal_index",
+          "type": "u64"
+        },
+        {
+          "name": "create_key",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "members",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        },
+        {
+          "name": "vote_receipt",
+          "type": {
+            "vec": "u32"
+          }
+        },
+        {
+          "name": "nullifier",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ],
+      "name": "approve",
+      "pre_tx": {
+        "elf": "vote_circuit.bin",
+        "inputs": [
+          {
+            "name": "nsk",
+            "source": "wallet_nsk",
+            "type_": "bytes32"
+          },
+          {
+            "name": "members",
+            "source": "arg:members",
+            "type_": "vec_bytes32"
+          },
+          {
+            "name": "proposal_index",
+            "source": "arg:proposal_index",
+            "type_": "u64"
+          },
+          {
+            "name": "domain",
+            "source": "literal:approve",
+            "type_": "string"
+          }
+        ],
+        "outputs": [
+          "vote_receipt",
+          "nullifier"
+        ],
+        "signer_arg": "caller"
+      }
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "multisig_state",
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "proposal",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "multisig_prop___"
+              },
+              {
+                "kind": "arg",
+                "path": "create_key"
+              },
+              {
+                "kind": "arg",
+                "path": "proposal_index"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "proposal_index",
+          "type": "u64"
+        },
+        {
+          "name": "create_key",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "members",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        },
+        {
+          "name": "vote_receipt",
+          "type": {
+            "vec": "u32"
+          }
+        },
+        {
+          "name": "nullifier",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ],
+      "name": "reject",
+      "pre_tx": {
+        "elf": "vote_circuit.bin",
+        "inputs": [
+          {
+            "name": "nsk",
+            "source": "wallet_nsk",
+            "type_": "bytes32"
+          },
+          {
+            "name": "members",
+            "source": "arg:members",
+            "type_": "vec_bytes32"
+          },
+          {
+            "name": "proposal_index",
+            "source": "arg:proposal_index",
+            "type_": "u64"
+          },
+          {
+            "name": "domain",
+            "source": "literal:reject",
+            "type_": "string"
+          }
+        ],
+        "outputs": [
+          "vote_receipt",
+          "nullifier"
+        ],
+        "signer_arg": "caller"
+      }
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "multisig_state",
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "proposal",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "multisig_prop___"
+              },
+              {
+                "kind": "arg",
+                "path": "create_key"
+              },
+              {
+                "kind": "arg",
+                "path": "proposal_index"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "target_accounts",
+          "rest": true,
+          "signer": false,
+          "writable": false
+        }
+      ],
+      "args": [
+        {
+          "name": "proposal_index",
+          "type": "u64"
+        },
+        {
+          "name": "create_key",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ],
+      "name": "execute"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "multisig_state",
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "proposer",
+          "signer": true,
+          "writable": false
+        },
+        {
+          "init": true,
+          "name": "proposal",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "multisig_prop___"
+              },
+              {
+                "kind": "arg",
+                "path": "create_key"
+              },
+              {
+                "kind": "arg",
+                "path": "proposal_index"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_member",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "create_key",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proposal_index",
+          "type": "u64"
+        }
+      ],
+      "name": "propose_add_member"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "multisig_state",
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "proposer",
+          "signer": true,
+          "writable": false
+        },
+        {
+          "init": true,
+          "name": "proposal",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "multisig_prop___"
+              },
+              {
+                "kind": "arg",
+                "path": "create_key"
+              },
+              {
+                "kind": "arg",
+                "path": "proposal_index"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "member",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "create_key",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proposal_index",
+          "type": "u64"
+        }
+      ],
+      "name": "propose_remove_member"
+    },
+    {
+      "accounts": [
+        {
+          "init": false,
+          "name": "multisig_state",
+          "signer": false,
+          "writable": true
+        },
+        {
+          "init": false,
+          "name": "proposer",
+          "signer": true,
+          "writable": false
+        },
+        {
+          "init": true,
+          "name": "proposal",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": "multisig_prop___"
+              },
+              {
+                "kind": "arg",
+                "path": "create_key"
+              },
+              {
+                "kind": "arg",
+                "path": "proposal_index"
+              }
+            ]
+          },
+          "signer": false,
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_threshold",
+          "type": "u8"
+        },
+        {
+          "name": "create_key",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "proposal_index",
+          "type": "u64"
+        }
+      ],
+      "name": "propose_change_threshold"
+    }
+  ],
+  "name": "multisig_program",
+  "types": [],
+  "version": "0.1.0"
+}

@@ -14,6 +14,6 @@ members = [
 [workspace.dependencies]
 risc0-zkvm = { version = "=3.0.5", features = ['std'] }
 risc0-build = "=3.0.5"
-nssa_core = { git = "https://github.com/logos-blockchain/lssa.git", rev = "767b5afd388c7981bcdf6f5b5c80159607e07e5b", features = ["host"] }
+nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1", features = ["host"] }
 borsh = "1.5.7"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
