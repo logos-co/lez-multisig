@@ -29,8 +29,8 @@ jobs:
       - name: Install spel-client-gen
         run: |
           cargo install \
-            --git https://github.com/logos-co/spel.git \
-            --branch main \
+            --git https://github.com/jimmy-claw/spel.git \
+            --branch jimmy/update-lssa-latest \
             spel-client-gen \
             --locked
 
