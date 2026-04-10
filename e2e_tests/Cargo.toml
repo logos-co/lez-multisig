@@ -13,10 +13,10 @@ path = "tests/e2e_member_management.rs"
 
 [dependencies]
 multisig_core = { path = "../multisig_core" }
-nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "ffcbc15972adbf557939bf3e2852af276422631b" }
-nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "ffcbc15972adbf557939bf3e2852af276422631b", features = ["host"] }
-common = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "ffcbc15972adbf557939bf3e2852af276422631b" }
-token_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "ffcbc15972adbf557939bf3e2852af276422631b" }
+nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1" }
+nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1", features = ["host"] }
+common = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1" }
+token_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1" }
 risc0-zkvm = "3.0"
 borsh = "1.5"
 tokio = { version = "1", features = ["full"] }
@@ -24,7 +24,7 @@ tokio = { version = "1", features = ["full"] }
 lez-multisig-ffi = { path = "../lez-multisig-ffi" }
 hex = "0.4"
 jsonrpsee-http-client = "0.24"
-sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", rev = "ffcbc15972adbf557939bf3e2852af276422631b" }
+sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1" }
 
 
 [lib]
