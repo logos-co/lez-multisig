@@ -5,14 +5,14 @@
 // - accounts[1]: rejector account (must be authorized = is a signer)
 // - accounts[2]: proposal PDA account (owned by multisig program)
 
-use nssa_core::account::AccountWithMetadata;
-use nssa_core::program::{AccountPostState, ChainedCall};
+use nssa_core::account::{Account, AccountWithMetadata};
+use nssa_core::program::ChainedCall;
 use multisig_core::{MultisigState, Proposal, ProposalStatus};
 
 pub fn handle(
     accounts: &[AccountWithMetadata],
     _proposal_index: u64,
-) -> (Vec<AccountPostState>, Vec<ChainedCall>) {
+) -> (Vec<Account>, Vec<ChainedCall>) {
     assert!(accounts.len() >= 3, "Reject requires multisig_state + rejector + proposal accounts");
 
     let multisig_account = &accounts[0];
@@ -55,11 +55,7 @@ pub fn handle(
     let rejector_post = rejector_account.account.clone();
 
     (
-        vec![
-            AccountPostState::new(multisig_post),
-            AccountPostState::new(rejector_post),
-            AccountPostState::new(proposal_post),
-        ],
+        vec![multisig_post, rejector_post, proposal_post],
         vec![],
     )
 }
@@ -116,7 +112,7 @@ mod tests {
 
         let (post_states, _) = handle(&accounts, 1);
 
-        let proposal: Proposal = borsh::from_slice(&Vec::from(post_states[2].account().data.clone())).unwrap();
+        let proposal: Proposal = borsh::from_slice(&Vec::from(post_states[2].data.clone())).unwrap();
         assert_eq!(proposal.rejected.len(), 1);
         assert_eq!(proposal.approved.len(), 1); // proposer still approved
     }
@@ -135,7 +131,7 @@ mod tests {
 
         let (post_states, _) = handle(&accounts, 1);
 
-        let proposal: Proposal = borsh::from_slice(&Vec::from(post_states[2].account().data.clone())).unwrap();
+        let proposal: Proposal = borsh::from_slice(&Vec::from(post_states[2].data.clone())).unwrap();
         assert_eq!(proposal.status, ProposalStatus::Rejected);
     }
 }

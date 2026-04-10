@@ -5,14 +5,14 @@
 // - accounts[1]: approver account (must be authorized = is a signer)
 // - accounts[2]: proposal PDA account (owned by multisig program)
 
-use nssa_core::account::AccountWithMetadata;
-use nssa_core::program::{AccountPostState, ChainedCall};
+use nssa_core::account::{Account, AccountWithMetadata};
+use nssa_core::program::ChainedCall;
 use multisig_core::{MultisigState, Proposal, ProposalStatus};
 
 pub fn handle(
     accounts: &[AccountWithMetadata],
     _proposal_index: u64,
-) -> (Vec<AccountPostState>, Vec<ChainedCall>) {
+) -> (Vec<Account>, Vec<ChainedCall>) {
     assert!(accounts.len() >= 3, "Approve requires multisig_state + approver + proposal accounts");
 
     let multisig_account = &accounts[0];
@@ -45,16 +45,12 @@ pub fn handle(
     let mut proposal_post = proposal_account.account.clone();
     proposal_post.data = proposal_bytes.try_into().unwrap();
 
-    // Multisig state unchanged, but must return post_state for every pre_state
+    // Return account for every pre_state
     let multisig_post = multisig_account.account.clone();
     let approver_post = approver_account.account.clone();
 
     (
-        vec![
-            AccountPostState::new(multisig_post),
-            AccountPostState::new(approver_post),
-            AccountPostState::new(proposal_post),
-        ],
+        vec![multisig_post, approver_post, proposal_post],
         vec![],
     )
 }
@@ -111,7 +107,7 @@ mod tests {
 
         let (post_states, _) = handle(&accounts, 1);
 
-        let proposal: Proposal = borsh::from_slice(&Vec::from(post_states[2].account().data.clone())).unwrap();
+        let proposal: Proposal = borsh::from_slice(&Vec::from(post_states[2].data.clone())).unwrap();
         assert_eq!(proposal.approved.len(), 2);
         assert!(proposal.approved.contains(&[1u8; 32]));
         assert!(proposal.approved.contains(&[2u8; 32]));

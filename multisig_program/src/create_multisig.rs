@@ -1,7 +1,7 @@
 // CreateMultisig handler — initializes a new M-of-N multisig
 
 use nssa_core::account::{Account, AccountWithMetadata};
-use nssa_core::program::{AccountPostState, ChainedCall};
+use nssa_core::program::ChainedCall;
 use multisig_core::MultisigState;
 
 /// Handle CreateMultisig instruction
@@ -22,7 +22,7 @@ pub fn handle(
     create_key: &[u8; 32],
     threshold: u8,
     members: &[[u8; 32]],
-) -> (Vec<AccountPostState>, Vec<ChainedCall>) {
+) -> (Vec<Account>, Vec<ChainedCall>) {
     // Validate inputs
     assert!(!members.is_empty(), "Multisig must have at least one member");
     assert!(threshold >= 1, "Threshold must be at least 1");
@@ -66,17 +66,15 @@ pub fn handle(
     let state_bytes = borsh::to_vec(&state).unwrap();
     multisig_account.data = state_bytes.try_into().unwrap();
     
-    // Build post_states: claim multisig_state + all member accounts
-    // Claiming member accounts satisfies LEZ Rule 7: the executor (a member) must be
-    // owned by the multisig program for Execute to work.
-    let mut post_states = vec![AccountPostState::new_claimed(multisig_account)];
-    
+    // Build accounts: multisig_state + all member accounts
+    // The #[account(init, ...)] attributes in lib.rs handle auto-claiming.
+    let mut post_accounts = vec![multisig_account];
+
     for i in 0..members.len() {
-        // Claim member account (empty data, just establishing ownership)
-        post_states.push(AccountPostState::new_claimed(accounts[1 + i].account.clone()));
+        post_accounts.push(accounts[1 + i].account.clone());
     }
-    
-    (post_states, vec![])
+
+    (post_accounts, vec![])
 }
 
 #[cfg(test)]
@@ -110,7 +108,7 @@ mod tests {
 
         // Verify multisig state was written correctly
         let state: MultisigState = borsh::from_slice(
-            &Vec::from(post_states[0].account().data.clone())
+            &Vec::from(post_states[0].data.clone())
         ).unwrap();
         assert_eq!(state.threshold, 2);
         assert_eq!(state.member_count, 3);

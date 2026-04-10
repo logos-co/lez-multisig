@@ -6,13 +6,13 @@
 // - accounts[2]: proposal PDA account (must be Account::default() = uninitialized)
 
 use nssa_core::account::{Account, AccountWithMetadata};
-use nssa_core::program::{AccountPostState, ChainedCall};
+use nssa_core::program::ChainedCall;
 use multisig_core::{ConfigAction, MultisigState, Proposal};
 
 pub fn handle(
     accounts: &[AccountWithMetadata],
     config_action: ConfigAction,
-) -> (Vec<AccountPostState>, Vec<ChainedCall>) {
+) -> (Vec<Account>, Vec<ChainedCall>) {
     assert!(accounts.len() >= 3, "ProposeConfig requires multisig_state + proposer + proposal accounts");
 
     let multisig_account = &accounts[0];
@@ -69,11 +69,7 @@ pub fn handle(
     let proposer_post = proposer_account.account.clone();
 
     (
-        vec![
-            AccountPostState::new(multisig_post),
-            AccountPostState::new(proposer_post),
-            AccountPostState::new_claimed(proposal_post),
-        ],
+        vec![multisig_post, proposer_post, proposal_post],
         vec![],
     )
 }
@@ -116,7 +112,7 @@ mod tests {
         assert_eq!(post_states.len(), 3);
 
         let proposal: Proposal = borsh::from_slice(
-            &Vec::from(post_states[2].account().data.clone())
+            &Vec::from(post_states[2].data.clone())
         ).unwrap();
         assert_eq!(proposal.config_action, Some(ConfigAction::AddMember { new_member: [4u8; 32] }));
         assert_eq!(proposal.target_account_count, 0);
@@ -138,7 +134,7 @@ mod tests {
 
         assert!(chained.is_empty());
         let proposal: Proposal = borsh::from_slice(
-            &Vec::from(post_states[2].account().data.clone())
+            &Vec::from(post_states[2].data.clone())
         ).unwrap();
         assert_eq!(proposal.config_action, Some(ConfigAction::RemoveMember { member: [2u8; 32] }));
     }
@@ -158,7 +154,7 @@ mod tests {
         let (post_states, _) = handle(&accounts, action);
 
         let proposal: Proposal = borsh::from_slice(
-            &Vec::from(post_states[2].account().data.clone())
+            &Vec::from(post_states[2].data.clone())
         ).unwrap();
         assert_eq!(proposal.config_action, Some(ConfigAction::ChangeThreshold { new_threshold: 3 }));
     }

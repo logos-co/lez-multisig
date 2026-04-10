@@ -5,7 +5,7 @@ pub mod approve;
 pub mod reject;
 pub mod execute;
 
-use nssa_core::program::{ProgramId};
+use nssa_core::program::ProgramId;
 use multisig_core::ConfigAction;
 use spel_framework::prelude::*;
 
@@ -21,29 +21,35 @@ mod multisig_program {
     pub fn create_multisig(
         #[account(init, pda = arg("create_key"))]
         multisig_state: AccountWithMetadata,
+        #[account(init)]
         member_accounts: Vec<AccountWithMetadata>,
         create_key: [u8; 32],
         threshold: u8,
         members: Vec<[u8; 32]>,
     ) -> SpelResult {
-        let accounts: Vec<AccountWithMetadata> = std::iter::once(multisig_state)
+        let all: Vec<AccountWithMetadata> = std::iter::once(multisig_state)
             .chain(member_accounts.into_iter())
             .collect();
-        let (post_states, chained_calls) =
-            crate::create_multisig::handle(&accounts, &create_key, threshold, &members);
-        Ok(SpelOutput { post_states, chained_calls })
+        let (modified, chained_calls) =
+            crate::create_multisig::handle(&all, &create_key, threshold, &members);
+        // Auto-claim: multisig_state is init/pda, member accounts are init
+        let mut pairs: Vec<(nssa_core::account::Account, AutoClaim)> = Vec::new();
+        pairs.push((modified[0].clone(), AutoClaim::pda_from_seeds(&[&create_key])));
+        for i in 1..modified.len() {
+            pairs.push((modified[i].clone(), AutoClaim::Claimed(nssa_core::program::Claim::Authorized)));
+        }
+        Ok(SpelOutput::execute(pairs, chained_calls))
     }
 
     /// Propose a new transaction.
     /// proposer must be a member signer. proposal is initialized as a new PDA.
-    /// proposal PDA seeds: ["multisig_prop___", create_key, proposal_index]
     #[instruction]
     pub fn propose(
         #[account(mut)]
         multisig_state: AccountWithMetadata,
         #[account(signer)]
         proposer: AccountWithMetadata,
-        #[account(init, pda = [literal("multisig_prop___"), arg("create_key"), arg("proposal_index")])]
+        #[account(init, pda = arg("create_key"))]
         proposal: AccountWithMetadata,
         target_program_id: ProgramId,
         target_instruction_data: Vec<u32>,
@@ -53,147 +59,188 @@ mod multisig_program {
         create_key: [u8; 32],
         proposal_index: u64,
     ) -> SpelResult {
-        let accounts = vec![multisig_state, proposer, proposal];
-        let (post_states, chained_calls) = crate::propose::handle(
-            &accounts,
+        let input = [multisig_state, proposer, proposal];
+        let (modified, chained_calls) = crate::propose::handle(
+            &input,
             &target_program_id,
             &target_instruction_data,
             target_account_count,
             &pda_seeds,
             &authorized_indices,
         );
-        Ok(SpelOutput { post_states, chained_calls })
+        Ok(SpelOutput::execute(
+            vec![
+                (modified[0].clone(), AutoClaim::None),
+                (modified[1].clone(), AutoClaim::None),
+                (modified[2].clone(), AutoClaim::pda_from_seeds(&[&create_key])),
+            ],
+            chained_calls,
+        ))
     }
 
     /// Approve an existing proposal.
     /// approver must be a member signer.
-    /// proposal PDA seeds: ["multisig_prop___", create_key, proposal_index]
     #[instruction]
     pub fn approve(
         #[account(mut)]
         multisig_state: AccountWithMetadata,
         #[account(signer)]
         approver: AccountWithMetadata,
-        #[account(mut, pda = [literal("multisig_prop___"), arg("create_key"), arg("proposal_index")])]
+        #[account(mut, pda = arg("create_key"))]
         proposal: AccountWithMetadata,
-        proposal_index: u64,
         create_key: [u8; 32],
+        proposal_index: u64,
     ) -> SpelResult {
-        let accounts = vec![multisig_state, approver, proposal];
-        let (post_states, chained_calls) =
-            crate::approve::handle(&accounts, proposal_index);
-        Ok(SpelOutput { post_states, chained_calls })
+        let input = [multisig_state, approver, proposal];
+        let (modified, chained_calls) =
+            crate::approve::handle(&input, proposal_index);
+        Ok(SpelOutput::execute(
+            vec![
+                (modified[0].clone(), AutoClaim::None),
+                (modified[1].clone(), AutoClaim::None),
+                (modified[2].clone(), AutoClaim::None),
+            ],
+            chained_calls,
+        ))
     }
 
     /// Reject an existing proposal.
     /// rejector must be a member signer.
-    /// proposal PDA seeds: ["multisig_prop___", create_key, proposal_index]
     #[instruction]
     pub fn reject(
         #[account(mut)]
         multisig_state: AccountWithMetadata,
         #[account(signer)]
         rejector: AccountWithMetadata,
-        #[account(mut, pda = [literal("multisig_prop___"), arg("create_key"), arg("proposal_index")])]
+        #[account(mut, pda = arg("create_key"))]
         proposal: AccountWithMetadata,
-        proposal_index: u64,
         create_key: [u8; 32],
+        proposal_index: u64,
     ) -> SpelResult {
-        let accounts = vec![multisig_state, rejector, proposal];
-        let (post_states, chained_calls) =
-            crate::reject::handle(&accounts, proposal_index);
-        Ok(SpelOutput { post_states, chained_calls })
+        let input = [multisig_state, rejector, proposal];
+        let (modified, chained_calls) =
+            crate::reject::handle(&input, proposal_index);
+        Ok(SpelOutput::execute(
+            vec![
+                (modified[0].clone(), AutoClaim::None),
+                (modified[1].clone(), AutoClaim::None),
+                (modified[2].clone(), AutoClaim::None),
+            ],
+            chained_calls,
+        ))
     }
 
     /// Execute a fully-approved proposal.
     /// executor must be a member signer. target_accounts are the rest accounts.
-    /// proposal PDA seeds: ["multisig_prop___", create_key, proposal_index]
     #[instruction]
     pub fn execute(
         #[account(mut)]
         multisig_state: AccountWithMetadata,
         #[account(signer)]
         executor: AccountWithMetadata,
-        #[account(mut, pda = [literal("multisig_prop___"), arg("create_key"), arg("proposal_index")])]
+        #[account(mut, pda = arg("create_key"))]
         proposal: AccountWithMetadata,
+        #[account(mut)]
         target_accounts: Vec<AccountWithMetadata>,
-        proposal_index: u64,
         create_key: [u8; 32],
+        proposal_index: u64,
     ) -> SpelResult {
-        let mut accounts = vec![multisig_state, executor, proposal];
-        accounts.extend(target_accounts);
-        let (post_states, chained_calls) =
-            crate::execute::handle(&accounts, proposal_index);
-        Ok(SpelOutput { post_states, chained_calls })
+        let mut all: Vec<AccountWithMetadata> = vec![multisig_state, executor, proposal];
+        all.extend(target_accounts);
+        let (modified, chained_calls) =
+            crate::execute::handle(&all, proposal_index);
+        let pairs: Vec<(nssa_core::account::Account, AutoClaim)> = modified
+            .into_iter()
+            .map(|acc| (acc, AutoClaim::None))
+            .collect();
+        Ok(SpelOutput::execute(pairs, chained_calls))
     }
 
     /// Propose adding a new member.
     /// proposer must be a member signer. proposal is initialized.
-    /// proposal PDA seeds: ["multisig_prop___", create_key, proposal_index]
     #[instruction]
     pub fn propose_add_member(
         #[account(mut)]
         multisig_state: AccountWithMetadata,
         #[account(signer)]
         proposer: AccountWithMetadata,
-        #[account(init, pda = [literal("multisig_prop___"), arg("create_key"), arg("proposal_index")])]
+        #[account(init, pda = arg("create_key"))]
         proposal: AccountWithMetadata,
-        new_member: [u8; 32],
         create_key: [u8; 32],
+        new_member: [u8; 32],
         proposal_index: u64,
     ) -> SpelResult {
-        let accounts = vec![multisig_state, proposer, proposal];
-        let (post_states, chained_calls) = crate::propose_config::handle(
-            &accounts,
+        let input = [multisig_state, proposer, proposal];
+        let (modified, chained_calls) = crate::propose_config::handle(
+            &input,
             ConfigAction::AddMember { new_member },
         );
-        Ok(SpelOutput { post_states, chained_calls })
+        Ok(SpelOutput::execute(
+            vec![
+                (modified[0].clone(), AutoClaim::None),
+                (modified[1].clone(), AutoClaim::None),
+                (modified[2].clone(), AutoClaim::pda_from_seeds(&[&create_key])),
+            ],
+            chained_calls,
+        ))
     }
 
     /// Propose removing a member.
     /// proposer must be a member signer. proposal is initialized.
-    /// proposal PDA seeds: ["multisig_prop___", create_key, proposal_index]
     #[instruction]
     pub fn propose_remove_member(
         #[account(mut)]
         multisig_state: AccountWithMetadata,
         #[account(signer)]
         proposer: AccountWithMetadata,
-        #[account(init, pda = [literal("multisig_prop___"), arg("create_key"), arg("proposal_index")])]
+        #[account(init, pda = arg("create_key"))]
         proposal: AccountWithMetadata,
-        member: [u8; 32],
         create_key: [u8; 32],
+        member: [u8; 32],
         proposal_index: u64,
     ) -> SpelResult {
-        let accounts = vec![multisig_state, proposer, proposal];
-        let (post_states, chained_calls) = crate::propose_config::handle(
-            &accounts,
+        let input = [multisig_state, proposer, proposal];
+        let (modified, chained_calls) = crate::propose_config::handle(
+            &input,
             ConfigAction::RemoveMember { member },
         );
-        Ok(SpelOutput { post_states, chained_calls })
+        Ok(SpelOutput::execute(
+            vec![
+                (modified[0].clone(), AutoClaim::None),
+                (modified[1].clone(), AutoClaim::None),
+                (modified[2].clone(), AutoClaim::pda_from_seeds(&[&create_key])),
+            ],
+            chained_calls,
+        ))
     }
 
     /// Propose changing the threshold.
     /// proposer must be a member signer. proposal is initialized.
-    /// proposal PDA seeds: ["multisig_prop___", create_key, proposal_index]
     #[instruction]
     pub fn propose_change_threshold(
         #[account(mut)]
         multisig_state: AccountWithMetadata,
         #[account(signer)]
         proposer: AccountWithMetadata,
-        #[account(init, pda = [literal("multisig_prop___"), arg("create_key"), arg("proposal_index")])]
+        #[account(init, pda = arg("create_key"))]
         proposal: AccountWithMetadata,
-        new_threshold: u8,
         create_key: [u8; 32],
+        new_threshold: u8,
         proposal_index: u64,
     ) -> SpelResult {
-        let accounts = vec![multisig_state, proposer, proposal];
-        let (post_states, chained_calls) = crate::propose_config::handle(
-            &accounts,
+        let input = [multisig_state, proposer, proposal];
+        let (modified, chained_calls) = crate::propose_config::handle(
+            &input,
             ConfigAction::ChangeThreshold { new_threshold },
         );
-        Ok(SpelOutput { post_states, chained_calls })
+        Ok(SpelOutput::execute(
+            vec![
+                (modified[0].clone(), AutoClaim::None),
+                (modified[1].clone(), AutoClaim::None),
+                (modified[2].clone(), AutoClaim::pda_from_seeds(&[&create_key])),
+            ],
+            chained_calls,
+        ))
     }
 }
 
@@ -203,7 +250,7 @@ mod multisig_program {
 pub fn process(
     accounts: &[nssa_core::account::AccountWithMetadata],
     instruction: &multisig_core::Instruction,
-) -> (Vec<nssa_core::program::AccountPostState>, Vec<nssa_core::program::ChainedCall>) {
+) -> (Vec<nssa_core::account::Account>, Vec<nssa_core::program::ChainedCall>) {
     use multisig_core::Instruction;
     match instruction {
         Instruction::CreateMultisig { create_key, threshold, members } =>

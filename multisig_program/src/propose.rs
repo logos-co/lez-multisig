@@ -6,7 +6,7 @@
 // - accounts[2]: proposal PDA account (must be Account::default() = uninitialized)
 
 use nssa_core::account::{Account, AccountWithMetadata};
-use nssa_core::program::{AccountPostState, ChainedCall, InstructionData, ProgramId};
+use nssa_core::program::{ChainedCall, InstructionData, ProgramId};
 use multisig_core::{MultisigState, Proposal};
 
 pub fn handle(
@@ -16,7 +16,7 @@ pub fn handle(
     target_account_count: u8,
     pda_seeds: &[[u8; 32]],
     authorized_indices: &[u8],
-) -> (Vec<AccountPostState>, Vec<ChainedCall>) {
+) -> (Vec<Account>, Vec<ChainedCall>) {
     assert!(accounts.len() >= 3, "Propose requires multisig_state + proposer + proposal accounts");
 
     let multisig_account = &accounts[0];
@@ -66,11 +66,7 @@ pub fn handle(
     let proposer_post = proposer_account.account.clone();
 
     (
-        vec![
-            AccountPostState::new(multisig_post),
-            AccountPostState::new(proposer_post),
-            AccountPostState::new_claimed(proposal_post),
-        ],
+        vec![multisig_post, proposer_post, proposal_post],
         vec![],
     )
 }
@@ -121,13 +117,13 @@ mod tests {
 
         // Multisig state should have incremented tx index
         let state: MultisigState = borsh::from_slice(
-            &Vec::from(post_states[0].account().data.clone())
+            &Vec::from(post_states[0].data.clone())
         ).unwrap();
         assert_eq!(state.transaction_index, 1);
 
         // Proposal should exist with proposer auto-approved
         let proposal: Proposal = borsh::from_slice(
-            &Vec::from(post_states[2].account().data.clone())
+            &Vec::from(post_states[2].data.clone())
         ).unwrap();
         assert_eq!(proposal.index, 1);
         assert_eq!(proposal.proposer, [1u8; 32]);
