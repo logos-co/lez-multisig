@@ -36,7 +36,7 @@ mod multisig_program {
         let mut claims = __claims_create_multisig();
         claims.extend(std::iter::repeat(AutoClaim::Claimed(Claim::Authorized)).take(members.len()));
 
-        Ok(SpelOutput::execute_with_claims(&accounts_out, &claims, chained_calls))
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Propose a new transaction.
@@ -67,7 +67,7 @@ mod multisig_program {
             &pda_seeds,
             &authorized_indices,
         );
-        Ok(SpelOutput::execute_with_claims(&accounts_out, &__claims_propose(), chained_calls))
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Approve an existing proposal.
@@ -87,7 +87,7 @@ mod multisig_program {
         let accounts = vec![multisig_state, approver, proposal];
         let (accounts_out, chained_calls) =
             crate::approve::handle(&accounts, proposal_index);
-        Ok(SpelOutput::execute_with_claims(&accounts_out, &__claims_approve(), chained_calls))
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Reject an existing proposal.
@@ -107,7 +107,7 @@ mod multisig_program {
         let accounts = vec![multisig_state, rejector, proposal];
         let (accounts_out, chained_calls) =
             crate::reject::handle(&accounts, proposal_index);
-        Ok(SpelOutput::execute_with_claims(&accounts_out, &__claims_reject(), chained_calls))
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Execute a fully-approved proposal.
@@ -135,7 +135,7 @@ mod multisig_program {
         let mut claims = __claims_execute();
         claims.extend(std::iter::repeat(AutoClaim::None).take(target_count));
 
-        Ok(SpelOutput::execute_with_claims(&accounts_out, &claims, chained_calls))
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Propose adding a new member.
@@ -158,7 +158,7 @@ mod multisig_program {
             &accounts,
             ConfigAction::AddMember { new_member },
         );
-        Ok(SpelOutput::execute_with_claims(&accounts_out, &__claims_propose_add_member(), chained_calls))
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Propose removing a member.
@@ -181,7 +181,7 @@ mod multisig_program {
             &accounts,
             ConfigAction::RemoveMember { member },
         );
-        Ok(SpelOutput::execute_with_claims(&accounts_out, &__claims_propose_remove_member(), chained_calls))
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Propose changing the threshold.
@@ -204,7 +204,7 @@ mod multisig_program {
             &accounts,
             ConfigAction::ChangeThreshold { new_threshold },
         );
-        Ok(SpelOutput::execute_with_claims(&accounts_out, &__claims_propose_change_threshold(), chained_calls))
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 }
 
