@@ -32,16 +32,11 @@ mod multisig_program {
         let (accounts_out, chained_calls) =
             crate::create_multisig::handle(&accounts, &create_key, threshold, &members);
 
-        // multisig_state: init PDA from create_key; member accounts: claimed via Authorized
-        let claims: Vec<AutoClaim> =
-            std::iter::once(AutoClaim::pda_from_seeds(&[&create_key[..]]))
-                .chain(std::iter::repeat(AutoClaim::Claimed(Claim::Authorized)).take(members.len()))
-                .collect();
+        // Auto-generate PDA claim for multisig_state; member accounts need manual Authorized claims
+        let mut claims = __claims_create_multisig();
+        claims.extend(std::iter::repeat(AutoClaim::Claimed(Claim::Authorized)).take(members.len()));
 
-        Ok(SpelOutput::execute(
-            accounts_out.into_iter().zip(claims).collect::<Vec<_>>(),
-            chained_calls,
-        ))
+        Ok(SpelOutput::execute_with_claims(&accounts_out, &claims, chained_calls))
     }
 
     /// Propose a new transaction.
@@ -53,7 +48,7 @@ mod multisig_program {
         multisig_state: AccountWithMetadata,
         #[account(signer)]
         proposer: AccountWithMetadata,
-        #[account(init)]
+        #[account(init, pda = [literal("multisig_prop___"), arg("create_key"), arg("proposal_index")])]
         proposal: AccountWithMetadata,
         target_program_id: ProgramId,
         target_instruction_data: Vec<u32>,
@@ -72,17 +67,7 @@ mod multisig_program {
             &pda_seeds,
             &authorized_indices,
         );
-
-        let claims = vec![
-            AutoClaim::None,
-            AutoClaim::None,
-            AutoClaim::pda_from_seeds(&[b"multisig_prop___" as &[u8], &create_key, &proposal_index.to_be_bytes()]),
-        ];
-
-        Ok(SpelOutput::execute(
-            accounts_out.into_iter().zip(claims).collect::<Vec<_>>(),
-            chained_calls,
-        ))
+        Ok(SpelOutput::execute_with_claims(&accounts_out, &__claims_propose(), chained_calls))
     }
 
     /// Approve an existing proposal.
@@ -94,7 +79,7 @@ mod multisig_program {
         multisig_state: AccountWithMetadata,
         #[account(signer)]
         approver: AccountWithMetadata,
-        #[account(mut)]
+        #[account(mut, pda = [literal("multisig_prop___"), arg("create_key"), arg("proposal_index")])]
         proposal: AccountWithMetadata,
         proposal_index: u64,
         create_key: [u8; 32],
@@ -102,13 +87,7 @@ mod multisig_program {
         let accounts = vec![multisig_state, approver, proposal];
         let (accounts_out, chained_calls) =
             crate::approve::handle(&accounts, proposal_index);
-
-        let claims = vec![AutoClaim::None, AutoClaim::None, AutoClaim::None];
-
-        Ok(SpelOutput::execute(
-            accounts_out.into_iter().zip(claims).collect::<Vec<_>>(),
-            chained_calls,
-        ))
+        Ok(SpelOutput::execute_with_claims(&accounts_out, &__claims_approve(), chained_calls))
     }
 
     /// Reject an existing proposal.
@@ -128,13 +107,7 @@ mod multisig_program {
         let accounts = vec![multisig_state, rejector, proposal];
         let (accounts_out, chained_calls) =
             crate::reject::handle(&accounts, proposal_index);
-
-        let claims = vec![AutoClaim::None, AutoClaim::None, AutoClaim::None];
-
-        Ok(SpelOutput::execute(
-            accounts_out.into_iter().zip(claims).collect::<Vec<_>>(),
-            chained_calls,
-        ))
+        Ok(SpelOutput::execute_with_claims(&accounts_out, &__claims_reject(), chained_calls))
     }
 
     /// Execute a fully-approved proposal.
@@ -158,14 +131,11 @@ mod multisig_program {
         let (accounts_out, chained_calls) =
             crate::execute::handle(&accounts, proposal_index);
 
-        // First 3 accounts: mut/signer/mut (no claim); target accounts: no claim
-        let claims: Vec<AutoClaim> =
-            std::iter::repeat(AutoClaim::None).take(3 + target_count).collect();
+        // Auto-generate claims for the 3 named accounts; target accounts have no claim
+        let mut claims = __claims_execute();
+        claims.extend(std::iter::repeat(AutoClaim::None).take(target_count));
 
-        Ok(SpelOutput::execute(
-            accounts_out.into_iter().zip(claims).collect::<Vec<_>>(),
-            chained_calls,
-        ))
+        Ok(SpelOutput::execute_with_claims(&accounts_out, &claims, chained_calls))
     }
 
     /// Propose adding a new member.
@@ -188,17 +158,7 @@ mod multisig_program {
             &accounts,
             ConfigAction::AddMember { new_member },
         );
-
-        let claims = vec![
-            AutoClaim::None,
-            AutoClaim::None,
-            AutoClaim::pda_from_seeds(&[b"multisig_prop___" as &[u8], &create_key, &proposal_index.to_be_bytes()]),
-        ];
-
-        Ok(SpelOutput::execute(
-            accounts_out.into_iter().zip(claims).collect::<Vec<_>>(),
-            chained_calls,
-        ))
+        Ok(SpelOutput::execute_with_claims(&accounts_out, &__claims_propose_add_member(), chained_calls))
     }
 
     /// Propose removing a member.
@@ -221,17 +181,7 @@ mod multisig_program {
             &accounts,
             ConfigAction::RemoveMember { member },
         );
-
-        let claims = vec![
-            AutoClaim::None,
-            AutoClaim::None,
-            AutoClaim::pda_from_seeds(&[b"multisig_prop___" as &[u8], &create_key, &proposal_index.to_be_bytes()]),
-        ];
-
-        Ok(SpelOutput::execute(
-            accounts_out.into_iter().zip(claims).collect::<Vec<_>>(),
-            chained_calls,
-        ))
+        Ok(SpelOutput::execute_with_claims(&accounts_out, &__claims_propose_remove_member(), chained_calls))
     }
 
     /// Propose changing the threshold.
@@ -254,17 +204,7 @@ mod multisig_program {
             &accounts,
             ConfigAction::ChangeThreshold { new_threshold },
         );
-
-        let claims = vec![
-            AutoClaim::None,
-            AutoClaim::None,
-            AutoClaim::pda_from_seeds(&[b"multisig_prop___" as &[u8], &create_key, &proposal_index.to_be_bytes()]),
-        ];
-
-        Ok(SpelOutput::execute(
-            accounts_out.into_iter().zip(claims).collect::<Vec<_>>(),
-            chained_calls,
-        ))
+        Ok(SpelOutput::execute_with_claims(&accounts_out, &__claims_propose_change_threshold(), chained_calls))
     }
 }
 
