@@ -70,7 +70,7 @@ version = "0.1.0"
 source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
 dependencies = [
  "borsh",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
  "risc0-zkvm",
  "serde",
 ]
@@ -627,7 +627,7 @@ name = "ata_core"
 version = "0.1.0"
 source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
 dependencies = [
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
  "risc0-zkvm",
  "serde",
 ]
@@ -2933,7 +2933,7 @@ dependencies = [
  "itertools 0.14.0",
  "k256",
  "nssa",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
  "rand 0.8.5",
  "serde",
  "sha2",
@@ -2989,7 +2989,7 @@ dependencies = [
  "lez-multisig-ffi",
  "multisig_core",
  "nssa",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
  "risc0-zkvm",
  "sequencer_service_rpc",
  "token_core",
@@ -3007,7 +3007,7 @@ dependencies = [
  "hex",
  "multisig_core",
  "nssa",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
  "reqwest",
  "sequencer_service_rpc",
  "serde",
@@ -3023,7 +3023,7 @@ version = "0.1.0"
 dependencies = [
  "multisig_program",
  "serde_json",
- "spel-framework",
+ "spel-framework 0.2.0 (git+https://github.com/logos-co/spel.git?tag=v0.2.0)",
 ]
 
 [[package]]
@@ -3789,10 +3789,10 @@ dependencies = [
  "borsh",
  "multisig_core",
  "multisig_program",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
  "risc0-zkvm",
  "serde_json",
- "spel-framework",
+ "spel-framework 0.2.0 (git+https://github.com/logos-co/spel.git?tag=v0.2.0)",
 ]
 
 [[package]]
@@ -3807,7 +3807,7 @@ name = "multisig_core"
 version = "0.1.0"
 dependencies = [
  "borsh",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
  "serde",
  "sha2",
 ]
@@ -3818,10 +3818,10 @@ version = "0.1.0"
 dependencies = [
  "borsh",
  "multisig_core",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
  "risc0-zkvm",
  "serde",
- "spel-framework",
+ "spel-framework 0.2.0 (git+https://github.com/logos-co/spel.git?rev=aa77b3c)",
 ]
 
 [[package]]
@@ -3884,7 +3884,7 @@ dependencies = [
  "hex",
  "k256",
  "log",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
  "rand 0.8.5",
  "risc0-binfmt",
  "risc0-build",
@@ -3892,6 +3892,23 @@ dependencies = [
  "serde",
  "serde_with",
  "sha2",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "nssa_core"
+version = "0.1.0"
+source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1#35d8df0d031315219f94d1546ceb862b0e5b208f"
+dependencies = [
+ "base58",
+ "borsh",
+ "bytemuck",
+ "bytesize",
+ "chacha20",
+ "k256",
+ "risc0-zkvm",
+ "serde",
+ "serde_with",
  "thiserror 2.0.18",
 ]
 
@@ -5332,7 +5349,7 @@ source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=f
 dependencies = [
  "common",
  "nssa",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
 ]
 
 [[package]]
@@ -5590,41 +5607,53 @@ dependencies = [
 
 [[package]]
 name = "spel"
-version = "0.1.0"
-source = "git+https://github.com/jimmy-claw/spel.git?branch=jimmy%2Fupdate-lssa-latest#32720ffa01bc14f6d67c0ebfb86c87916ea0eb77"
+version = "0.2.0"
+source = "git+https://github.com/logos-co/spel.git?tag=v0.2.0#72fc22673b1c36e1dde19948491cd85931bda89c"
 dependencies = [
  "base58",
  "borsh",
  "common",
+ "hex",
  "nssa",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
  "risc0-zkvm",
  "sequencer_service_rpc",
  "serde",
  "serde_json",
- "spel-framework-core",
+ "spel-framework-core 0.2.0 (git+https://github.com/logos-co/spel.git?tag=v0.2.0)",
  "tokio",
  "wallet",
 ]
 
 [[package]]
 name = "spel-framework"
-version = "0.1.0"
-source = "git+https://github.com/jimmy-claw/spel.git?branch=jimmy%2Fupdate-lssa-latest#32720ffa01bc14f6d67c0ebfb86c87916ea0eb77"
+version = "0.2.0"
+source = "git+https://github.com/logos-co/spel.git?tag=v0.2.0#72fc22673b1c36e1dde19948491cd85931bda89c"
 dependencies = [
  "borsh",
- "nssa_core",
- "spel-framework-core",
- "spel-framework-macros",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "spel-framework-core 0.2.0 (git+https://github.com/logos-co/spel.git?tag=v0.2.0)",
+ "spel-framework-macros 0.2.0 (git+https://github.com/logos-co/spel.git?tag=v0.2.0)",
+]
+
+[[package]]
+name = "spel-framework"
+version = "0.2.0"
+source = "git+https://github.com/logos-co/spel.git?rev=aa77b3c#aa77b3cc75ee2ed148d7c10d54e4a3a0a02d1858"
+dependencies = [
+ "borsh",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "spel-framework-core 0.2.0 (git+https://github.com/logos-co/spel.git?rev=aa77b3c)",
+ "spel-framework-macros 0.2.0 (git+https://github.com/logos-co/spel.git?rev=aa77b3c)",
 ]
 
 [[package]]
 name = "spel-framework-core"
-version = "0.1.0"
-source = "git+https://github.com/jimmy-claw/spel.git?branch=jimmy%2Fupdate-lssa-latest#32720ffa01bc14f6d67c0ebfb86c87916ea0eb77"
+version = "0.2.0"
+source = "git+https://github.com/logos-co/spel.git?tag=v0.2.0#72fc22673b1c36e1dde19948491cd85931bda89c"
 dependencies = [
  "borsh",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
  "serde",
  "serde_json",
  "sha2",
@@ -5633,9 +5662,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "spel-framework-core"
+version = "0.2.0"
+source = "git+https://github.com/logos-co/spel.git?rev=aa77b3c#aa77b3cc75ee2ed148d7c10d54e4a3a0a02d1858"
+dependencies = [
+ "borsh",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "spel-framework-macros"
-version = "0.1.0"
-source = "git+https://github.com/jimmy-claw/spel.git?branch=jimmy%2Fupdate-lssa-latest#32720ffa01bc14f6d67c0ebfb86c87916ea0eb77"
+version = "0.2.0"
+source = "git+https://github.com/logos-co/spel.git?tag=v0.2.0#72fc22673b1c36e1dde19948491cd85931bda89c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "sha2",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "spel-framework-macros"
+version = "0.2.0"
+source = "git+https://github.com/logos-co/spel.git?rev=aa77b3c#aa77b3cc75ee2ed148d7c10d54e4a3a0a02d1858"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5798,7 +5851,7 @@ dependencies = [
  "common",
  "key_protocol",
  "nssa",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
  "serde",
 ]
 
@@ -5922,7 +5975,7 @@ version = "0.1.0"
 source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
 dependencies = [
  "borsh",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
  "serde",
 ]
 
@@ -6496,7 +6549,7 @@ dependencies = [
  "key_protocol",
  "log",
  "nssa",
- "nssa_core",
+ "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
  "optfield",
  "rand 0.8.5",
  "sequencer_service_rpc",
