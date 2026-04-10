@@ -32,10 +32,6 @@ mod multisig_program {
         let (accounts_out, chained_calls) =
             crate::create_multisig::handle(&accounts, &create_key, threshold, &members);
 
-        // Auto-generate PDA claim for multisig_state; member accounts need manual Authorized claims
-        let mut claims = __claims_create_multisig();
-        claims.extend(std::iter::repeat(AutoClaim::Claimed(Claim::Authorized)).take(members.len()));
-
         Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
@@ -125,15 +121,10 @@ mod multisig_program {
         proposal_index: u64,
         create_key: [u8; 32],
     ) -> SpelResult {
-        let target_count = target_accounts.len();
         let mut accounts = vec![multisig_state, executor, proposal];
         accounts.extend(target_accounts);
         let (accounts_out, chained_calls) =
             crate::execute::handle(&accounts, proposal_index);
-
-        // Auto-generate claims for the 3 named accounts; target accounts have no claim
-        let mut claims = __claims_execute();
-        claims.extend(std::iter::repeat(AutoClaim::None).take(target_count));
 
         Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
