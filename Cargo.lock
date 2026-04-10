@@ -70,18 +70,7 @@ version = "0.1.0"
 source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1#35d8df0d031315219f94d1546ceb862b0e5b208f"
 dependencies = [
  "borsh",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "risc0-zkvm",
- "serde",
-]
-
-[[package]]
-name = "amm_core"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
-dependencies = [
- "borsh",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "nssa_core",
  "risc0-zkvm",
  "serde",
 ]
@@ -638,17 +627,7 @@ name = "ata_core"
 version = "0.1.0"
 source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1#35d8df0d031315219f94d1546ceb862b0e5b208f"
 dependencies = [
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "risc0-zkvm",
- "serde",
-]
-
-[[package]]
-name = "ata_core"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
-dependencies = [
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "nssa_core",
  "risc0-zkvm",
  "serde",
 ]
@@ -1095,7 +1074,7 @@ version = "0.1.0"
 source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1#35d8df0d031315219f94d1546ceb862b0e5b208f"
 dependencies = [
  "borsh",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "nssa_core",
 ]
 
 [[package]]
@@ -1135,26 +1114,8 @@ dependencies = [
  "hex",
  "log",
  "logos-blockchain-common-http-client",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "serde",
- "serde_with",
- "sha2",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "common"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
-dependencies = [
- "anyhow",
- "base64",
- "borsh",
- "hex",
- "log",
- "logos-blockchain-common-http-client",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "nssa",
+ "nssa_core",
  "serde",
  "serde_with",
  "sha2",
@@ -2920,34 +2881,13 @@ dependencies = [
  "aes-gcm",
  "anyhow",
  "bip39",
- "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "common",
  "hex",
  "hmac-sha512",
  "itertools 0.14.0",
  "k256",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "rand 0.8.5",
- "serde",
- "sha2",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "key_protocol"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
-dependencies = [
- "aes-gcm",
- "anyhow",
- "bip39",
- "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "hex",
- "hmac-sha512",
- "itertools 0.14.0",
- "k256",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "nssa",
+ "nssa_core",
  "rand 0.8.5",
  "serde",
  "sha2",
@@ -2997,15 +2937,15 @@ name = "lez-multisig-e2e"
 version = "0.1.0"
 dependencies = [
  "borsh",
- "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "common",
  "hex",
  "lez-multisig-ffi",
  "multisig_core",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "nssa",
+ "nssa_core",
  "risc0-zkvm",
- "sequencer_service_rpc 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "token_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "sequencer_service_rpc",
+ "token_core",
  "tokio",
 ]
 
@@ -3016,18 +2956,18 @@ dependencies = [
  "base64",
  "borsh",
  "bs58",
- "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "common",
  "hex",
  "multisig_core",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "nssa",
+ "nssa_core",
  "reqwest",
- "sequencer_service_rpc 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "sequencer_service_rpc",
  "serde",
  "serde_json",
  "sha2",
  "tokio",
- "wallet 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "wallet",
 ]
 
 [[package]]
@@ -3804,7 +3744,7 @@ dependencies = [
  "borsh",
  "multisig_core",
  "multisig_program",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "nssa_core",
  "risc0-zkvm",
  "serde_json",
  "spel-framework",
@@ -3822,7 +3762,7 @@ name = "multisig_core"
 version = "0.1.0"
 dependencies = [
  "borsh",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "nssa_core",
  "serde",
  "sha2",
 ]
@@ -3833,7 +3773,7 @@ version = "0.1.0"
 dependencies = [
  "borsh",
  "multisig_core",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "nssa_core",
  "risc0-zkvm",
  "serde",
  "spel-framework",
@@ -3900,28 +3840,7 @@ dependencies = [
  "hex",
  "k256",
  "log",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "rand 0.8.5",
- "risc0-binfmt",
- "risc0-build",
- "risc0-zkvm",
- "serde",
- "serde_with",
- "sha2",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "nssa"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
-dependencies = [
- "anyhow",
- "borsh",
- "hex",
- "k256",
- "log",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "nssa_core",
  "rand 0.8.5",
  "risc0-binfmt",
  "risc0-build",
@@ -3936,23 +3855,6 @@ dependencies = [
 name = "nssa_core"
 version = "0.1.0"
 source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1#35d8df0d031315219f94d1546ceb862b0e5b208f"
-dependencies = [
- "base58",
- "borsh",
- "bytemuck",
- "bytesize",
- "chacha20",
- "k256",
- "risc0-zkvm",
- "serde",
- "serde_with",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "nssa_core"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
 dependencies = [
  "base58",
  "borsh",
@@ -5378,19 +5280,9 @@ name = "sequencer_service_protocol"
 version = "0.1.0"
 source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1#35d8df0d031315219f94d1546ceb862b0e5b208f"
 dependencies = [
- "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
-]
-
-[[package]]
-name = "sequencer_service_protocol"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
-dependencies = [
- "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "common",
+ "nssa",
+ "nssa_core",
 ]
 
 [[package]]
@@ -5399,16 +5291,7 @@ version = "0.1.0"
 source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1#35d8df0d031315219f94d1546ceb862b0e5b208f"
 dependencies = [
  "jsonrpsee",
- "sequencer_service_protocol 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
-]
-
-[[package]]
-name = "sequencer_service_rpc"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
-dependencies = [
- "jsonrpsee",
- "sequencer_service_protocol 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "sequencer_service_protocol",
 ]
 
 [[package]]
@@ -5662,17 +5545,17 @@ source = "git+https://github.com/logos-co/spel.git?rev=2f2bf79#2f2bf79777b28aa2f
 dependencies = [
  "base58",
  "borsh",
- "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "common",
  "hex",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "nssa",
+ "nssa_core",
  "risc0-zkvm",
- "sequencer_service_rpc 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "sequencer_service_rpc",
  "serde",
  "serde_json",
  "spel-framework-core",
  "tokio",
- "wallet 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "wallet",
 ]
 
 [[package]]
@@ -5681,7 +5564,7 @@ version = "0.2.0"
 source = "git+https://github.com/logos-co/spel.git?rev=2f2bf79#2f2bf79777b28aa2f159841128e0de1d02f14073"
 dependencies = [
  "borsh",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "nssa_core",
  "spel-framework-core",
  "spel-framework-macros",
 ]
@@ -5692,7 +5575,7 @@ version = "0.2.0"
 source = "git+https://github.com/logos-co/spel.git?rev=2f2bf79#2f2bf79777b28aa2f159841128e0de1d02f14073"
 dependencies = [
  "borsh",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "nssa_core",
  "serde",
  "serde_json",
  "sha2",
@@ -5863,22 +5746,10 @@ name = "testnet_initial_state"
 version = "0.1.0"
 source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1#35d8df0d031315219f94d1546ceb862b0e5b208f"
 dependencies = [
- "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "key_protocol 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "serde",
-]
-
-[[package]]
-name = "testnet_initial_state"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
-dependencies = [
- "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "key_protocol 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "common",
+ "key_protocol",
+ "nssa",
+ "nssa_core",
  "serde",
 ]
 
@@ -6002,17 +5873,7 @@ version = "0.1.0"
 source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1#35d8df0d031315219f94d1546ceb862b0e5b208f"
 dependencies = [
  "borsh",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "serde",
-]
-
-[[package]]
-name = "token_core"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
-dependencies = [
- "borsh",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "nssa_core",
  "serde",
 ]
 
@@ -6554,14 +6415,14 @@ name = "wallet"
 version = "0.1.0"
 source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1#35d8df0d031315219f94d1546ceb862b0e5b208f"
 dependencies = [
- "amm_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "amm_core",
  "anyhow",
  "async-stream",
- "ata_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "ata_core",
  "base58",
  "bip39",
  "clap",
- "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "common",
  "env_logger",
  "futures",
  "hex",
@@ -6569,55 +6430,19 @@ dependencies = [
  "humantime-serde",
  "indicatif",
  "itertools 0.14.0",
- "key_protocol 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "key_protocol",
  "log",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "nssa",
+ "nssa_core",
  "optfield",
  "rand 0.8.5",
- "sequencer_service_rpc 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "sequencer_service_rpc",
  "serde",
  "serde_json",
  "sha2",
- "testnet_initial_state 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
+ "testnet_initial_state",
  "thiserror 2.0.18",
- "token_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?tag=v0.2.0-rc1)",
- "tokio",
- "url",
-]
-
-[[package]]
-name = "wallet"
-version = "0.1.0"
-source = "git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b#ffcbc15972adbf557939bf3e2852af276422631b"
-dependencies = [
- "amm_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "anyhow",
- "async-stream",
- "ata_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "base58",
- "clap",
- "common 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "env_logger",
- "futures",
- "hex",
- "humantime",
- "humantime-serde",
- "indicatif",
- "itertools 0.14.0",
- "key_protocol 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "log",
- "nssa 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "nssa_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "optfield",
- "rand 0.8.5",
- "sequencer_service_rpc 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "serde",
- "serde_json",
- "sha2",
- "testnet_initial_state 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
- "thiserror 2.0.18",
- "token_core 0.1.0 (git+https://github.com/logos-blockchain/logos-execution-zone.git?rev=ffcbc15972adbf557939bf3e2852af276422631b)",
+ "token_core",
  "tokio",
  "url",
 ]
