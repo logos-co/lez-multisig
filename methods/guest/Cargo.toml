@@ -18,5 +18,5 @@ multisig_program = { path = "../../multisig_program" }
 nssa_core.workspace = true
 risc0-zkvm.workspace = true
 borsh.workspace = true
-spel-framework = { git = "https://github.com/logos-co/spel.git", rev = "eeb284a" }
+spel-framework = { git = "https://github.com/logos-co/spel.git", rev = "e22bb67" }
 serde_json = "1"
