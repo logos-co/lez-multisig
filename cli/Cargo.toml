@@ -8,5 +8,5 @@ name = "multisig"
 path = "src/bin/multisig.rs"
 
 [dependencies]
-spel = { git = "https://github.com/logos-co/spel.git", rev = "52e6414" }
+spel = { git = "https://github.com/logos-co/spel.git", rev = "093ccf9" }
 tokio = { version = "1", features = ["full"] }

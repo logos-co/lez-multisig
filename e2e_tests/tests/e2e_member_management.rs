@@ -205,6 +205,7 @@ async fn test_member_management() {
     ).value();
 
     let multisig_state_id = compute_multisig_state_pda(&program_id, &create_key);
+    eprintln!("  create_key: {}", hex::encode(create_key));
     println!("  State PDA: {}", multisig_state_id);
 
     let msg = Message::try_new(

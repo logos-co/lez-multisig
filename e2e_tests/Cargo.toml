@@ -26,5 +26,25 @@ hex = "0.4"
 sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1", features = ["client"] }
 
 
+spel-framework = { git = "https://github.com/logos-co/spel.git", rev = "093ccf9" }
+
 [lib]
 path = "src/lib.rs"
+
+[[test]]
+name = "debug_pda"
+path = "tests/debug_pda.rs"
+
+[[test]]
+name = "debug_pda2"
+path = "tests/debug_pda2.rs"
+
+[[test]]
+name = "debug_serde"
+path = "tests/debug_serde.rs"
+[[test]]
+name = "debug_imgid"
+path = "tests/debug_imgid.rs"
+[[test]]
+name = "debug_instr_serde"
+path = "tests/debug_instr_serde.rs"
