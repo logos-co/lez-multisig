@@ -5541,7 +5541,7 @@ dependencies = [
 [[package]]
 name = "spel"
 version = "0.2.0"
-source = "git+https://github.com/jimmy-claw/spel.git?branch=feature%2Fauto-claim-execute#2554643bbafff73a391042495457556b5ee90ca5"
+source = "git+https://github.com/logos-co/spel.git?branch=pr-126#6829ffb3a69aa519844506a0db503b2d1df3f653"
 dependencies = [
  "base58",
  "borsh",
@@ -5561,7 +5561,7 @@ dependencies = [
 [[package]]
 name = "spel-framework"
 version = "0.2.0"
-source = "git+https://github.com/jimmy-claw/spel.git?branch=feature%2Fauto-claim-execute#2554643bbafff73a391042495457556b5ee90ca5"
+source = "git+https://github.com/logos-co/spel.git?branch=pr-126#6829ffb3a69aa519844506a0db503b2d1df3f653"
 dependencies = [
  "borsh",
  "nssa_core",
@@ -5572,7 +5572,7 @@ dependencies = [
 [[package]]
 name = "spel-framework-core"
 version = "0.2.0"
-source = "git+https://github.com/jimmy-claw/spel.git?branch=feature%2Fauto-claim-execute#2554643bbafff73a391042495457556b5ee90ca5"
+source = "git+https://github.com/logos-co/spel.git?branch=pr-126#6829ffb3a69aa519844506a0db503b2d1df3f653"
 dependencies = [
  "borsh",
  "nssa_core",
@@ -5586,7 +5586,7 @@ dependencies = [
 [[package]]
 name = "spel-framework-macros"
 version = "0.2.0"
-source = "git+https://github.com/jimmy-claw/spel.git?branch=feature%2Fauto-claim-execute#2554643bbafff73a391042495457556b5ee90ca5"
+source = "git+https://github.com/logos-co/spel.git?branch=pr-126#6829ffb3a69aa519844506a0db503b2d1df3f653"
 dependencies = [
  "proc-macro2",
  "quote",

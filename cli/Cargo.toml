@@ -8,5 +8,5 @@ name = "multisig"
 path = "src/bin/multisig.rs"
 
 [dependencies]
-spel = { git = "https://github.com/jimmy-claw/spel.git", branch = "feature/auto-claim-execute" }
+spel = { git = "https://github.com/logos-co/spel.git", branch = "pr-126" }
 tokio = { version = "1", features = ["full"] }
