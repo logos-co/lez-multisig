@@ -7,27 +7,43 @@
 
 mod multisig;
 
-// Re-export generated PDA compute helpers for use by tests and other crates.
-fn _compute_pda(seeds: &[&[u8]]) -> nssa_core::account::AccountId {
+
+// PDA computation using nssa_core (matches guest/SPEL behavior)
+use nssa_core::program::{ProgramId, PdaSeed};
+
+/// Seed from string - pads to 32 bytes
+fn seed_from_str(s: &str) -> [u8; 32] {
+    let mut seed = [0u8; 32];
+    let bytes = s.as_bytes();
+    let len = bytes.len().min(32);
+    seed[..len].copy_from_slice(&bytes[..len]);
+    seed
+}
+
+/// Compute multisig state PDA - matches SPEL macro: pda = arg("create_key")
+pub fn compute_multisig_state_pda(program_id: &ProgramId, create_key: &[u8; 32]) -> nssa_core::account::AccountId {
+    let pda_seed = PdaSeed::new(*create_key);
+    nssa_core::account::AccountId::from((program_id, &pda_seed))
+}
+
+/// Compute proposal PDA - matches SPEL macro: pda = [literal("multisig_prop___"), arg(create_key), arg(proposal_index)]
+pub fn compute_proposal_pda(program_id: &ProgramId, create_key: &[u8; 32], proposal_index: u64) -> nssa_core::account::AccountId {
+    // Multi-seed: SHA256(seed1 || seed2 || seed3) where each seed is 32 bytes
+    let tag_seed = seed_from_str("multisig_prop___");
+    let mut idx_seed = [0u8; 32];
+    idx_seed[..8].copy_from_slice(&proposal_index.to_le_bytes());
+    
+    // Combine seeds manually to match SPEL's multi-seed behavior
     use sha2::{Sha256, Digest};
     let mut hasher = Sha256::new();
-    for seed in seeds {
-        let mut padded = [0u8; 32];
-        let len = seed.len().min(32);
-        padded[..len].copy_from_slice(&seed[..len]);
-        hasher.update(&padded);
-    }
-    nssa_core::account::AccountId::new(hasher.finalize().into())
+    hasher.update(tag_seed);
+    hasher.update(create_key);
+    hasher.update(idx_seed);
+    let combined: [u8; 32] = hasher.finalize().into();
+    
+    let pda_seed = PdaSeed::new(combined);
+    nssa_core::account::AccountId::from((program_id, &pda_seed))
 }
-
-pub fn compute_multisig_state_pda(_program_id: &nssa_core::program::ProgramId, create_key: &[u8; 32]) -> nssa_core::account::AccountId {
-    _compute_pda(&[create_key as &[u8]])
-}
-
-pub fn compute_proposal_pda(_program_id: &nssa_core::program::ProgramId, create_key: &[u8; 32], proposal_index: u64) -> nssa_core::account::AccountId {
-    _compute_pda(&[b"multisig_prop___", create_key as &[u8], &proposal_index.to_le_bytes()])
-}
-
 // Vault PDA helpers — derived from program_id + create_key
 // Seeds: SHA256(pad("multisig_vault___") || create_key)
 pub fn vault_pda_seed_bytes(create_key: &[u8; 32]) -> [u8; 32] {
