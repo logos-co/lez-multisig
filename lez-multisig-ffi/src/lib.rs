@@ -253,3 +253,23 @@ mod multisig_queries {
         }).unwrap_or_else(|e| json!({"success": false, "error": e}).to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nssa_core::program::ProgramId;
+
+    #[test]
+    fn test_pda_computation_matches_core() {
+        let program_id: ProgramId = [1, 2, 3, 4, 5, 6, 7, 8];
+        let create_key: [u8; 32] = [9; 32];
+        
+        // Compute using FFI
+        let ffi_pda = compute_multisig_state_pda(&program_id, &create_key);
+        
+        // Compute using multisig_core
+        let core_pda = multisig_core::compute_multisig_state_pda(&program_id, &create_key);
+        
+        assert_eq!(ffi_pda, core_pda, "FFI PDA should match multisig_core PDA");
+    }
+}
