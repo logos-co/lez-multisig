@@ -48,3 +48,13 @@ path = "tests/debug_imgid.rs"
 [[test]]
 name = "debug_instr_serde"
 path = "tests/debug_instr_serde.rs"
+[[test]]
+name = "debug_pda_final"
+path = "tests/debug_pda_final.rs"
+[[test]]
+name = "debug_all"
+path = "tests/debug_all.rs"
+
+[[test]]
+name = "check_imgid"
+path = "tests/check_imgid.rs"
