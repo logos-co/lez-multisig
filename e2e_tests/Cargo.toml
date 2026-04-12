@@ -32,29 +32,13 @@ spel-framework = { git = "https://github.com/logos-co/spel.git", rev = "093ccf9"
 path = "src/lib.rs"
 
 [[test]]
-name = "debug_pda"
-path = "tests/debug_pda.rs"
 
 [[test]]
-name = "debug_pda2"
-path = "tests/debug_pda2.rs"
 
 [[test]]
-name = "debug_serde"
-path = "tests/debug_serde.rs"
 [[test]]
-name = "debug_imgid"
-path = "tests/debug_imgid.rs"
 [[test]]
-name = "debug_instr_serde"
-path = "tests/debug_instr_serde.rs"
 [[test]]
-name = "debug_pda_final"
-path = "tests/debug_pda_final.rs"
 [[test]]
-name = "debug_all"
-path = "tests/debug_all.rs"
 
 [[test]]
-name = "check_imgid"
-path = "tests/check_imgid.rs"

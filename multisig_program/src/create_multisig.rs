@@ -1,5 +1,8 @@
 // CreateMultisig handler — initializes a new M-of-N multisig
 
+#[cfg(feature = "guest")]
+use nssa_core::program::env;
+
 use nssa_core::account::{Account, AccountWithMetadata};
 use nssa_core::program::ChainedCall;
 use multisig_core::MultisigState;
@@ -23,6 +26,12 @@ pub fn handle(
     threshold: u8,
     members: &[[u8; 32]],
 ) -> (Vec<Account>, Vec<ChainedCall>) {
+    #[cfg(feature = "guest")]
+    {
+        let self_id = env::program_id();
+        let hex: String = self_id.iter().flat_map(|w| w.to_le_bytes()).map(|b| format!("{:02x}", b)).collect();
+        env::eprintln(&format!("GUEST: self_program_id = {}", hex));
+    }
     // Validate inputs
     assert!(!members.is_empty(), "Multisig must have at least one member");
     assert!(threshold >= 1, "Threshold must be at least 1");
