@@ -12,7 +12,7 @@
 // Inspired by Squads Protocol v4 (Solana).
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use nssa_core::program::{InstructionData, ProgramId};
+use nssa_core::program::ProgramId;
 
 use serde::{Deserialize, Serialize};
 

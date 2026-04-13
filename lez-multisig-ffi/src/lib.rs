@@ -121,7 +121,7 @@ mod multisig_queries {
     use wallet::WalletCore;
     use serde_json::{Value, json};
     use multisig_core::{MultisigState, Proposal};
-    use crate::multisig::{compute_proposal_pda, compute_multisig_state_pda};
+    use crate::{compute_proposal_pda, compute_multisig_state_pda};
     use nssa_core::account::AccountId;
 
     fn load_wallet(v: &Value) -> Result<WalletCore, String> {
