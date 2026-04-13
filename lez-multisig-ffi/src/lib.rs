@@ -45,12 +45,12 @@ pub fn compute_proposal_pda(program_id: &ProgramId, create_key: &[u8; 32], propo
     nssa_core::account::AccountId::from((program_id, &pda_seed))
 }
 // Vault PDA helpers — derived from program_id + create_key
-// Seeds: SHA256(pad("multisig_vault___") || create_key)
+// Seeds: SHA256(pad("multisig_vault__") || create_key)
 pub fn vault_pda_seed_bytes(create_key: &[u8; 32]) -> [u8; 32] {
     use sha2::{Sha256, Digest};
     let mut hasher = Sha256::new();
     let mut padded = [0u8; 32];
-    let src: &[u8] = b"multisig_vault___";
+    let src: &[u8] = b"multisig_vault__";
     padded[..src.len()].copy_from_slice(src);
     hasher.update(&padded);
     hasher.update(create_key);
@@ -271,5 +271,16 @@ mod tests {
         let core_pda = multisig_core::compute_multisig_state_pda(&program_id, &create_key);
         
         assert_eq!(ffi_pda, core_pda, "FFI PDA should match multisig_core PDA");
+    }
+
+    #[test]
+    fn test_vault_pda_matches_core() {
+        let program_id: ProgramId = [1, 2, 3, 4, 5, 6, 7, 8];
+        let create_key: [u8; 32] = [9; 32];
+
+        let ffi_vault = compute_vault_pda(&program_id, &create_key);
+        let core_vault = multisig_core::compute_vault_pda(&program_id, &create_key);
+
+        assert_eq!(ffi_vault, core_vault, "FFI vault PDA should match multisig_core vault PDA");
     }
 }

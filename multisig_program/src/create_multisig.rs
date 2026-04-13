@@ -26,12 +26,6 @@ pub fn handle(
     threshold: u8,
     members: &[[u8; 32]],
 ) -> (Vec<Account>, Vec<ChainedCall>) {
-    #[cfg(feature = "guest")]
-    {
-        let self_id = env::program_id();
-        let hex: String = self_id.iter().flat_map(|w| w.to_le_bytes()).map(|b| format!("{:02x}", b)).collect();
-        env::eprintln(&format!("GUEST: self_program_id = {}", hex));
-    }
     // Validate inputs
     assert!(!members.is_empty(), "Multisig must have at least one member");
     assert!(threshold >= 1, "Threshold must be at least 1");
