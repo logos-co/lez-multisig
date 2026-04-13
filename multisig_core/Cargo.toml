@@ -7,4 +7,3 @@ edition = "2024"
 nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1" }
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 borsh = "1.5.7"
-sha2 = { version = "0.10", default-features = false }

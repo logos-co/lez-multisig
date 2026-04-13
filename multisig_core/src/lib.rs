@@ -12,8 +12,7 @@
 // Inspired by Squads Protocol v4 (Solana).
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use nssa_core::program::{InstructionData, ProgramId, PdaSeed};
-use nssa_core::account::AccountId;
+use nssa_core::program::{InstructionData, ProgramId};
 
 use serde::{Deserialize, Serialize};
 
@@ -299,80 +298,3 @@ impl MultisigState {
     }
 }
 
-// ---------------------------------------------------------------------------
-// PDA derivation helpers
-// ---------------------------------------------------------------------------
-
-/// Compute PDA seed for a multisig identified by create_key.
-/// The seed is the raw create_key bytes, matching the SPEL macro pda = arg("create_key").
-pub fn multisig_state_pda_seed(create_key: &[u8; 32]) -> PdaSeed {
-    PdaSeed::new(*create_key)
-}
-
-/// Compute the on-chain AccountId (PDA) for a multisig.
-pub fn compute_multisig_state_pda(program_id: &ProgramId, create_key: &[u8; 32]) -> AccountId {
-    AccountId::from((program_id, &multisig_state_pda_seed(create_key)))
-}
-
-/// Compute PDA seed for a proposal.
-/// Each proposal gets a unique PDA: seed = XOR("multisig_prop___", create_key) XOR proposal_index in last 8 bytes.
-pub fn proposal_pda_seed(create_key: &[u8; 32], proposal_index: u64) -> PdaSeed {
-    // Multi-seed PDA matching SPEL macro: [literal("multisig_prop___"), arg(create_key), arg(proposal_index)]
-    // compute_pda multi-seed = SHA256(seed_from_str("multisig_prop___") || create_key || proposal_index.to_seed())
-    let mut tag_seed = [0u8; 32];
-    let tag = b"multisig_prop___";
-    tag_seed[..tag.len()].copy_from_slice(tag);
-
-    let mut idx_seed = [0u8; 32];
-    idx_seed[..8].copy_from_slice(&proposal_index.to_le_bytes());
-
-    use sha2::{Sha256, Digest};
-    let mut hasher = Sha256::new();
-    hasher.update(tag_seed);
-    hasher.update(create_key);
-    hasher.update(idx_seed);
-    let hash: [u8; 32] = hasher.finalize().into();
-    PdaSeed::new(hash)
-}
-
-/// Compute the on-chain AccountId (PDA) for a proposal.
-pub fn compute_proposal_pda(program_id: &ProgramId, create_key: &[u8; 32], proposal_index: u64) -> AccountId {
-    AccountId::from((program_id, &proposal_pda_seed(create_key, proposal_index)))
-}
-
-/// Compute PDA seed for a multisig vault (holds assets authorized by the multisig).
-/// Uses SHA-256(pad32("multisig_vault__") || create_key) — matches lez-cli multi-seed derivation.
-/// This allows `lez-cli pda vault --create-key <key>` to work without any special tooling.
-pub fn vault_pda_seed(create_key: &[u8; 32]) -> PdaSeed {
-    // Matches lez-cli pda.rs hash_seeds: SHA-256(seed1_32bytes || seed2_32bytes)
-    let mut tag_padded = [0u8; 32];
-    let tag = b"multisig_vault__"; // 16 bytes
-    tag_padded[..tag.len()].copy_from_slice(tag);
-
-    let mut input = [0u8; 64];
-    input[..32].copy_from_slice(&tag_padded);
-    input[32..].copy_from_slice(create_key);
-
-    // Use sha2 for host-side hashing (no risc0 dep in multisig_core)
-    use sha2::{Sha256, Digest};
-    let hash: [u8; 32] = Sha256::digest(&input).into();
-    PdaSeed::new(hash)
-}
-
-/// Compute the on-chain AccountId (PDA) for a multisig's vault.
-pub fn compute_vault_pda(program_id: &ProgramId, create_key: &[u8; 32]) -> AccountId {
-    AccountId::from((program_id, &vault_pda_seed(create_key)))
-}
-
-/// Get the raw [u8; 32] seed bytes for a vault PDA (for storage in proposals).
-pub fn vault_pda_seed_bytes(create_key: &[u8; 32]) -> [u8; 32] {
-    // Recompute hash directly since PdaSeed inner field is private
-    let mut tag_padded = [0u8; 32];
-    let tag = b"multisig_vault__";
-    tag_padded[..tag.len()].copy_from_slice(tag);
-    let mut input = [0u8; 64];
-    input[..32].copy_from_slice(&tag_padded);
-    input[32..].copy_from_slice(create_key);
-    use sha2::{Sha256, Digest};
-    Sha256::digest(&input).into()
-}
