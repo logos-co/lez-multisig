@@ -204,12 +204,7 @@ async fn test_member_management() {
         &PublicKey::new_from_private_key(&PrivateKey::new_os_random())
     ).value();
 
-    // DEBUG: check program_id before PDA computation
-    let pid_check: String = program_id.iter().flat_map(|w| w.to_le_bytes()).map(|b| format!("{:02x}", b)).collect();
-    eprintln!("  BEFORE PDA: program_id = {}", pid_check);
-    eprintln!("  BEFORE PDA: program_id (raw) = {:?}", program_id);
     let multisig_state_id = compute_multisig_state_pda(&program_id, &create_key);
-    eprintln!("  create_key: {}", hex::encode(create_key));
     println!("  State PDA: {}", multisig_state_id);
 
     let msg = Message::try_new(
