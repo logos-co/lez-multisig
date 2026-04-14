@@ -74,7 +74,7 @@ jobs:
       - name: Patch Cargo.toml SPEL dependencies
         run: |
           find . -name "Cargo.toml" | xargs sed -i -E \
-            's|(git = "https://github.com/logos-co/spel\.git"), (branch|rev|tag) = "[^"]*"|\1, rev = "${{ steps.spel.outputs.sha }}"|g'
+            's#(git = "https://github.com/logos-co/spel\.git"), (branch|rev|tag) = "[^"]*"#\1, rev = "${{ steps.spel.outputs.sha }}"#g'
 
       - name: Install logos-blockchain-circuits
         run: |
@@ -160,7 +160,7 @@ jobs:
       - name: Patch Cargo.toml SPEL dependencies
         run: |
           find . -name "Cargo.toml" | xargs sed -i -E \
-            's|(git = "https://github.com/logos-co/spel\.git"), (branch|rev|tag) = "[^"]*"|\1, rev = "${{ steps.spel.outputs.sha }}"|g'
+            's#(git = "https://github.com/logos-co/spel\.git"), (branch|rev|tag) = "[^"]*"#\1, rev = "${{ steps.spel.outputs.sha }}"#g'
 
       - name: Install risc0 toolchain
         run: |
