@@ -5,7 +5,7 @@ pub mod approve;
 pub mod reject;
 pub mod execute;
 
-use nssa_core::program::{ProgramId};
+use nssa_core::program::ProgramId;
 use multisig_core::ConfigAction;
 use spel_framework::prelude::*;
 
@@ -29,9 +29,10 @@ mod multisig_program {
         let accounts: Vec<AccountWithMetadata> = std::iter::once(multisig_state)
             .chain(member_accounts.into_iter())
             .collect();
-        let (post_states, chained_calls) =
+        let (accounts_out, chained_calls) =
             crate::create_multisig::handle(&accounts, &create_key, threshold, &members);
-        Ok(SpelOutput { post_states, chained_calls })
+
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Propose a new transaction.
@@ -54,7 +55,7 @@ mod multisig_program {
         proposal_index: u64,
     ) -> SpelResult {
         let accounts = vec![multisig_state, proposer, proposal];
-        let (post_states, chained_calls) = crate::propose::handle(
+        let (accounts_out, chained_calls) = crate::propose::handle(
             &accounts,
             &target_program_id,
             &target_instruction_data,
@@ -62,7 +63,7 @@ mod multisig_program {
             &pda_seeds,
             &authorized_indices,
         );
-        Ok(SpelOutput { post_states, chained_calls })
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Approve an existing proposal.
@@ -80,9 +81,9 @@ mod multisig_program {
         create_key: [u8; 32],
     ) -> SpelResult {
         let accounts = vec![multisig_state, approver, proposal];
-        let (post_states, chained_calls) =
+        let (accounts_out, chained_calls) =
             crate::approve::handle(&accounts, proposal_index);
-        Ok(SpelOutput { post_states, chained_calls })
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Reject an existing proposal.
@@ -100,9 +101,9 @@ mod multisig_program {
         create_key: [u8; 32],
     ) -> SpelResult {
         let accounts = vec![multisig_state, rejector, proposal];
-        let (post_states, chained_calls) =
+        let (accounts_out, chained_calls) =
             crate::reject::handle(&accounts, proposal_index);
-        Ok(SpelOutput { post_states, chained_calls })
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Execute a fully-approved proposal.
@@ -122,9 +123,10 @@ mod multisig_program {
     ) -> SpelResult {
         let mut accounts = vec![multisig_state, executor, proposal];
         accounts.extend(target_accounts);
-        let (post_states, chained_calls) =
+        let (accounts_out, chained_calls) =
             crate::execute::handle(&accounts, proposal_index);
-        Ok(SpelOutput { post_states, chained_calls })
+
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Propose adding a new member.
@@ -143,11 +145,11 @@ mod multisig_program {
         proposal_index: u64,
     ) -> SpelResult {
         let accounts = vec![multisig_state, proposer, proposal];
-        let (post_states, chained_calls) = crate::propose_config::handle(
+        let (accounts_out, chained_calls) = crate::propose_config::handle(
             &accounts,
             ConfigAction::AddMember { new_member },
         );
-        Ok(SpelOutput { post_states, chained_calls })
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Propose removing a member.
@@ -166,11 +168,11 @@ mod multisig_program {
         proposal_index: u64,
     ) -> SpelResult {
         let accounts = vec![multisig_state, proposer, proposal];
-        let (post_states, chained_calls) = crate::propose_config::handle(
+        let (accounts_out, chained_calls) = crate::propose_config::handle(
             &accounts,
             ConfigAction::RemoveMember { member },
         );
-        Ok(SpelOutput { post_states, chained_calls })
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 
     /// Propose changing the threshold.
@@ -189,35 +191,10 @@ mod multisig_program {
         proposal_index: u64,
     ) -> SpelResult {
         let accounts = vec![multisig_state, proposer, proposal];
-        let (post_states, chained_calls) = crate::propose_config::handle(
+        let (accounts_out, chained_calls) = crate::propose_config::handle(
             &accounts,
             ConfigAction::ChangeThreshold { new_threshold },
         );
-        Ok(SpelOutput { post_states, chained_calls })
-    }
-}
-
-// Legacy process() function for the existing guest binary.
-// The #[lez_program] macro generates main() and IDL, but the guest binary
-// (methods/guest/src/bin/multisig.rs) uses this for the risc0 entry point.
-pub fn process(
-    accounts: &[nssa_core::account::AccountWithMetadata],
-    instruction: &multisig_core::Instruction,
-) -> (Vec<nssa_core::program::AccountPostState>, Vec<nssa_core::program::ChainedCall>) {
-    use multisig_core::Instruction;
-    match instruction {
-        Instruction::CreateMultisig { create_key, threshold, members } =>
-            create_multisig::handle(accounts, create_key, *threshold, members),
-        Instruction::Propose { target_program_id, target_instruction_data, target_account_count, pda_seeds, authorized_indices, .. } =>
-            propose::handle(accounts, target_program_id, target_instruction_data, *target_account_count, pda_seeds, authorized_indices),
-        Instruction::Approve { proposal_index, .. } => approve::handle(accounts, *proposal_index),
-        Instruction::Reject { proposal_index, .. } => reject::handle(accounts, *proposal_index),
-        Instruction::Execute { proposal_index, .. } => execute::handle(accounts, *proposal_index),
-        Instruction::ProposeAddMember { new_member, .. } =>
-            propose_config::handle(accounts, ConfigAction::AddMember { new_member: *new_member }),
-        Instruction::ProposeRemoveMember { member, .. } =>
-            propose_config::handle(accounts, ConfigAction::RemoveMember { member: *member }),
-        Instruction::ProposeChangeThreshold { new_threshold, .. } =>
-            propose_config::handle(accounts, ConfigAction::ChangeThreshold { new_threshold: *new_threshold }),
+        Ok(SpelOutput::execute(accounts_out, chained_calls))
     }
 }

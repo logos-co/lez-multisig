@@ -1,15 +1,21 @@
 //! End-to-end test for the multisig program with token transfers via ChainedCalls.
 //!
 //! Flow:
-//! 1. Deploy token program + multisig program
-//! 2. Create a fungible token (definition + holding for minter)
-//! 3. Create a 2-of-3 multisig
-//! 4. Compute vault PDA (multisig's token holding account)
-//! 5. Transfer tokens from minter to vault PDA
-//! 6. Create a proposal to transfer tokens from vault to recipient (ChainedCall to token program)
-//! 7. Approve the proposal (reach threshold)
-//! 8. Execute — multisig emits ChainedCall to token program
-//! 9. Verify tokens arrived at recipient
+//! 1.  Deploy token program + multisig program
+//! 2.  Create a fungible token (definition + holding for minter)
+//! 3.  Create a 2-of-3 multisig
+//! 4.  Compute vault PDA (multisig's token holding account)
+//! 5.  Initialize vault token holding via multisig ChainedCall to token.InitializeAccount
+//!     (the vault PDA can only be authorized as a Claim::Authorized account when multisig
+//!     is the ChainedCall caller — the vault_id IS the PDA of the multisig program)
+//! 6.  Transfer tokens from minter to vault (now works: vault owned by token program,
+//!     no claim needed for an already-initialized account)
+//! 7.  Initialize recipient token holding directly (recipient signs)
+//! 8.  Create a proposal (index 2) to transfer tokens from vault to recipient
+//! 9.  Approve the proposal (reach threshold)
+//! 10. Execute — multisig emits ChainedCall to token.Transfer(vault → recipient)
+//!     (vault is authorized via PDA mechanism, recipient already exists — no new claim)
+//! 11. Verify tokens arrived at recipient
 //!
 //! Prerequisites:
 //! - Running sequencer at SEQUENCER_URL (default http://127.0.0.1:3040)
@@ -185,13 +191,15 @@ async fn test_multisig_token_transfer() {
         name: "TestToken".to_string(),
         total_supply: 1_000_000,
     };
+    // Both def and holding accounts must sign to authorize Claim::Authorized in the token program.
+    // Fresh accounts have nonce=0.
     let msg = Message::try_new(
         token_program_id,
         vec![def_id, minter_holding_id],
-        vec![],
+        vec![nssa_core::account::Nonce(0), nssa_core::account::Nonce(0)],
         token_instruction,
     ).unwrap();
-    let ws = WitnessSet::for_message(&msg, &[] as &[&PrivateKey]);
+    let ws = WitnessSet::for_message(&msg, &[&def_key, &minter_holding_key]);
     submit_tx(&client, PublicTransaction::new(msg, ws)).await;
 
     let balance = get_balance(&client, minter_holding_id).await;
@@ -214,6 +222,7 @@ async fn test_multisig_token_transfer() {
 
     let multisig_state_id = compute_multisig_state_pda(&multisig_program_id, &create_key);
     let vault_id = compute_vault_pda(&multisig_program_id, &create_key);
+    let vault_seed = vault_pda_seed_bytes(&create_key);
 
     println!("  Multisig state PDA: {}", multisig_state_id);
     println!("  Vault PDA: {}", vault_id);
@@ -237,19 +246,88 @@ async fn test_multisig_token_transfer() {
     assert_eq!(state.members.len(), 3);
     println!("  ✅ 2-of-3 multisig created!");
 
-    // ── Fund the vault ──────────────────────────────────────────────────
-    println!("\n═══ STEP 3: Transfer tokens to multisig vault ═══");
+    // ── Initialize vault token holding via multisig ChainedCall ─────────
+    // The vault is a PDA of the multisig program. The token program requires
+    // Claim::Authorized for fresh accounts. A PDA can only be authorized via the
+    // ChainedCall mechanism when the PDA's owner program is the caller.
+    // So we initialize the vault by having the multisig execute a proposal that
+    // calls token.InitializeAccount(def_id, vault_id) — vault_id is an authorized
+    // PDA of multisig in the ChainedCall, so Claim::Authorized succeeds.
+    // After this, vault_id.program_owner = token_program_id.
+    println!("\n═══ STEP 3: Initialize vault holding via multisig ChainedCall ═══");
+    let vault_init_proposal_id = compute_proposal_pda(&multisig_program_id, &create_key, 1);
+    println!("  Vault-init proposal PDA: {}", vault_init_proposal_id);
+
+    let vault_init_instruction_data = risc0_zkvm::serde::to_vec(
+        &TokenInstruction::InitializeAccount
+    ).unwrap();
+
+    // Propose #1: initialize vault via token.InitializeAccount
+    // target accounts: [def_id (index 0), vault_id (index 1)]
+    // vault at index 1 is the authorized PDA (authorized_indices = [1])
+    let nonce_m1 = get_nonce(&client, m1).await;
+    let msg = Message::try_new(
+        multisig_program_id,
+        vec![multisig_state_id, m1, vault_init_proposal_id],
+        vec![nssa_core::account::Nonce(nonce_m1)],
+        Instruction::Propose {
+            target_program_id: token_program_id,
+            target_instruction_data: vault_init_instruction_data,
+            target_account_count: 2,   // def_id + vault_id
+            pda_seeds: vec![vault_seed],
+            authorized_indices: vec![1], // vault at index 1
+            create_key,
+            proposal_index: 1,
+        },
+    ).unwrap();
+    let ws = WitnessSet::for_message(&msg, &[&key1]);
+    submit_tx(&client, PublicTransaction::new(msg, ws)).await;
+
+    let vault_init_proposal = get_proposal(&client, vault_init_proposal_id).await;
+    assert_eq!(vault_init_proposal.approved.len(), 1);
+    println!("  ✅ Vault-init proposal #1 created");
+
+    // Approve vault-init proposal (m2)
+    let nonce_m2 = get_nonce(&client, m2).await;
+    let msg = Message::try_new(
+        multisig_program_id,
+        vec![multisig_state_id, m2, vault_init_proposal_id],
+        vec![nssa_core::account::Nonce(nonce_m2)],
+        Instruction::Approve { create_key, proposal_index: 1 },
+    ).unwrap();
+    let ws = WitnessSet::for_message(&msg, &[&key2]);
+    submit_tx(&client, PublicTransaction::new(msg, ws)).await;
+
+    // Execute vault-init: ChainedCall → token.InitializeAccount(def_id, vault_id)
+    // In the ChainedCall, vault_id is in authorized_pdas = {vault_id} because
+    // compute_authorized_pdas(multisig_program_id, [vault_seed]) yields vault_id.
+    // So Claim::Authorized for vault_id is validated → vault.program_owner = token_program_id.
+    let nonce_m1 = get_nonce(&client, m1).await;
+    let msg = Message::try_new(
+        multisig_program_id,
+        vec![multisig_state_id, m1, vault_init_proposal_id, def_id, vault_id],
+        vec![nssa_core::account::Nonce(nonce_m1)],
+        Instruction::Execute { create_key, proposal_index: 1 },
+    ).unwrap();
+    let ws = WitnessSet::for_message(&msg, &[&key1]);
+    submit_tx(&client, PublicTransaction::new(msg, ws)).await;
+
+    let vault_init_proposal = get_proposal(&client, vault_init_proposal_id).await;
+    assert_eq!(vault_init_proposal.status, ProposalStatus::Executed, "Vault-init proposal should be executed");
+    println!("  ✅ Vault initialized — vault.program_owner = token_program");
+
+    // ── Fund the vault (direct transfer) ────────────────────────────────
+    // Now that vault is owned by the token program, token.Transfer can write to it
+    // without claiming it (new_claimed_if_default returns no claim when
+    // account.program_owner != DEFAULT_PROGRAM_ID). No vault signing needed.
+    println!("\n═══ STEP 4: Transfer 500 tokens from minter to vault ═══");
     let nonce = get_nonce(&client, minter_holding_id).await;
-    let transfer_to_vault = TokenInstruction::Transfer {
-        amount_to_transfer: 500,
-    };
     let msg = Message::try_new(
         token_program_id,
         vec![minter_holding_id, vault_id],
         vec![nssa_core::account::Nonce(nonce)],
-        transfer_to_vault,
+        TokenInstruction::Transfer { amount_to_transfer: 500 },
     ).unwrap();
-    // Sign with minter_holding_key (the key that derives to the sender account)
     let ws = WitnessSet::for_message(&msg, &[&minter_holding_key]);
     submit_tx(&client, PublicTransaction::new(msg, ws)).await;
 
@@ -258,62 +336,65 @@ async fn test_multisig_token_transfer() {
     assert_eq!(vault_balance, Some(500), "Vault should have 500 tokens");
     println!("  ✅ Vault funded with 500 tokens!");
 
-    // ── Propose token transfer from vault ───────────────────────────────
-    println!("\n═══ STEP 4: Propose transfer 200 tokens from vault ═══");
+    // ── Initialize recipient token holding directly ──────────────────────
+    // The recipient must pre-initialize their holding before the multisig executes
+    // the transfer. Once recipient.program_owner = token_program_id, the ChainedCall
+    // token.Transfer will not need Claim::Authorized for the recipient (no claim when
+    // account already has a non-default program_owner).
+    println!("\n═══ STEP 5: Initialize recipient holding ═══");
     let recipient_key = PrivateKey::new_os_random();
     let recipient_id = account_id_from_key(&recipient_key);
+    let msg = Message::try_new(
+        token_program_id,
+        vec![def_id, recipient_id],
+        vec![nssa_core::account::Nonce(0)],  // recipient is fresh
+        TokenInstruction::InitializeAccount,
+    ).unwrap();
+    let ws = WitnessSet::for_message(&msg, &[&recipient_key]);
+    submit_tx(&client, PublicTransaction::new(msg, ws)).await;
+    println!("  ✅ Recipient holding initialized, recipient.program_owner = token_program");
 
-    // Build the token transfer instruction that the ChainedCall will execute
-    let token_transfer_instruction = TokenInstruction::Transfer {
-        amount_to_transfer: 200,
-    };
+    // ── Propose token transfer from vault to recipient ───────────────────
+    println!("\n═══ STEP 6: Propose transfer 200 tokens from vault ═══");
+    let token_transfer_instruction = TokenInstruction::Transfer { amount_to_transfer: 200 };
     let target_instruction_data = risc0_zkvm::serde::to_vec(&token_transfer_instruction).unwrap();
 
-    let vault_seed = vault_pda_seed_bytes(&create_key);
+    // This is proposal #2 (vault-init was #1)
+    let proposal_id = compute_proposal_pda(&multisig_program_id, &create_key, 2);
+    println!("  Transfer proposal PDA: {}", proposal_id);
 
-    // Compute proposal PDA
-    let proposal_id = compute_proposal_pda(&multisig_program_id, &create_key, 1);
-    println!("  Proposal PDA: {}", proposal_id);
-
-    let nonce_state = get_nonce(&client, multisig_state_id).await;
     let nonce_m1 = get_nonce(&client, m1).await;
-    let propose_instruction = Instruction::Propose {
-        target_program_id: token_program_id,
-        target_instruction_data: target_instruction_data.clone(),
-        target_account_count: 2,  // vault_holding + recipient_holding
-        pda_seeds: vec![vault_seed],
-        authorized_indices: vec![0], // vault (index 0) gets is_authorized=true
-        create_key,
-        proposal_index: 1,
-    };
     let msg = Message::try_new(
         multisig_program_id,
-        vec![multisig_state_id, m1, proposal_id], // Propose expects 3 accounts now
-        vec![nssa_core::account::Nonce(nonce_m1)], // Only signer nonces
-        propose_instruction,
+        vec![multisig_state_id, m1, proposal_id],
+        vec![nssa_core::account::Nonce(nonce_m1)],
+        Instruction::Propose {
+            target_program_id: token_program_id,
+            target_instruction_data: target_instruction_data.clone(),
+            target_account_count: 2,     // vault (index 0) + recipient (index 1)
+            pda_seeds: vec![vault_seed], // vault is PDA of multisig
+            authorized_indices: vec![0], // vault (sender) at index 0 must be authorized
+            create_key,
+            proposal_index: 2,
+        },
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[&key1]);
     submit_tx(&client, PublicTransaction::new(msg, ws)).await;
 
-    // Verify proposal was created
     let proposal = get_proposal(&client, proposal_id).await;
     assert_eq!(proposal.approved.len(), 1);
-    
     let state = get_multisig_state(&client, multisig_state_id).await;
-    assert_eq!(state.transaction_index, 1, "transaction_index should be incremented");
-    println!("  ✅ Proposal #1 created (1/2 approvals)");
+    assert_eq!(state.transaction_index, 2, "transaction_index should be 2");
+    println!("  ✅ Proposal #2 created (1/2 approvals)");
 
     // ── Approve ─────────────────────────────────────────────────────────
-    println!("\n═══ STEP 5: Member 2 approves ═══");
-    let nonce_state = get_nonce(&client, multisig_state_id).await;
+    println!("\n═══ STEP 7: Member 2 approves ═══");
     let nonce_m2 = get_nonce(&client, m2).await;
-    let nonce_proposal = get_nonce(&client, proposal_id).await;
-    
     let msg = Message::try_new(
         multisig_program_id,
-        vec![multisig_state_id, m2, proposal_id], // Approve expects 3 accounts now
-        vec![nssa_core::account::Nonce(nonce_m2)], // Only signer nonces
-        Instruction::Approve { create_key, proposal_index: 1 },
+        vec![multisig_state_id, m2, proposal_id],
+        vec![nssa_core::account::Nonce(nonce_m2)],
+        Instruction::Approve { create_key, proposal_index: 2 },
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[&key2]);
     submit_tx(&client, PublicTransaction::new(msg, ws)).await;
@@ -323,32 +404,29 @@ async fn test_multisig_token_transfer() {
     println!("  ✅ 2/2 approvals — ready to execute!");
 
     // ── Execute (ChainedCall to token program) ──────────────────────────
-    println!("\n═══ STEP 6: Execute — transfer tokens via ChainedCall ═══");
-    let nonce_state = get_nonce(&client, multisig_state_id).await;
+    // In the ChainedCall: vault is authorized_pdas (vault_id = PDA of multisig).
+    // recipient is already owned by token → new_claimed_if_default returns no claim.
+    // Only the executor (m1) needs to sign this TX.
+    println!("\n═══ STEP 8: Execute — transfer tokens via ChainedCall ═══");
     let nonce_m1 = get_nonce(&client, m1).await;
-    let nonce_proposal = get_nonce(&client, proposal_id).await;
-    let nonce_vault = get_nonce(&client, vault_id).await;
-    let nonce_recipient = get_nonce(&client, recipient_id).await;
-
-    // Execute tx includes: [multisig_state, executor, proposal_pda, vault_holding, recipient_holding]
     let msg = Message::try_new(
         multisig_program_id,
         vec![multisig_state_id, m1, proposal_id, vault_id, recipient_id],
-        vec![nssa_core::account::Nonce(nonce_m1)], // Only signer nonces
-        Instruction::Execute { create_key, proposal_index: 1 },
+        vec![nssa_core::account::Nonce(nonce_m1)],
+        Instruction::Execute { create_key, proposal_index: 2 },
     ).unwrap();
     let ws = WitnessSet::for_message(&msg, &[&key1]);
     submit_tx(&client, PublicTransaction::new(msg, ws)).await;
 
     // ── Verify final state ──────────────────────────────────────────────
-    println!("\n═══ STEP 7: Verify results ═══");
-    
+    println!("\n═══ STEP 9: Verify results ═══");
+
     let proposal = get_proposal(&client, proposal_id).await;
     assert_eq!(proposal.status, ProposalStatus::Executed, "Proposal should be executed");
     println!("  ✅ Proposal marked as executed");
 
     let state = get_multisig_state(&client, multisig_state_id).await;
-    assert_eq!(state.transaction_index, 1, "transaction_index should remain 1");
+    assert_eq!(state.transaction_index, 2, "transaction_index should be 2");
 
     let vault_balance = get_balance(&client, vault_id).await;
     println!("  Vault balance: {:?}", vault_balance);

@@ -7,49 +7,39 @@
 
 mod multisig;
 
-// Re-export generated PDA compute helpers for use by tests and other crates.
-fn _compute_pda(seeds: &[&[u8]]) -> nssa_core::account::AccountId {
-    use sha2::{Sha256, Digest};
-    let mut hasher = Sha256::new();
-    for seed in seeds {
-        let mut padded = [0u8; 32];
-        let len = seed.len().min(32);
-        padded[..len].copy_from_slice(&seed[..len]);
-        hasher.update(&padded);
-    }
-    nssa_core::account::AccountId::new(hasher.finalize().into())
+
+use nssa_core::program::ProgramId;
+use nssa_core::account::AccountId;
+use spel_framework_core::pda::{compute_pda_multi, seed_from_str, ToSeed};
+
+/// PDA for the multisig state account.
+/// Mirrors `#[account(init, pda = arg("create_key"))]` in multisig_program/src/lib.rs.
+pub fn compute_multisig_state_pda(program_id: &ProgramId, create_key: &[u8; 32]) -> AccountId {
+    compute_pda_multi(program_id, &[create_key as &dyn ToSeed])
 }
 
-pub fn compute_multisig_state_pda(_program_id: &nssa_core::program::ProgramId, create_key: &[u8; 32]) -> nssa_core::account::AccountId {
-    _compute_pda(&[create_key as &[u8]])
+/// PDA for a proposal account.
+/// Mirrors `#[account(init, pda = [literal("multisig_prop___"), arg("create_key"), arg("proposal_index")])]`.
+pub fn compute_proposal_pda(program_id: &ProgramId, create_key: &[u8; 32], proposal_index: u64) -> AccountId {
+    let tag = seed_from_str("multisig_prop___");
+    compute_pda_multi(program_id, &[&tag as &dyn ToSeed, create_key, &proposal_index])
 }
 
-pub fn compute_proposal_pda(_program_id: &nssa_core::program::ProgramId, create_key: &[u8; 32], proposal_index: u64) -> nssa_core::account::AccountId {
-    _compute_pda(&[b"multisig_prop___", create_key as &[u8], &proposal_index.to_le_bytes()])
-}
-
-// Vault PDA helpers — derived from program_id + create_key
-// Seeds: SHA256(pad("multisig_vault___") || create_key)
+/// Raw seed bytes for the vault PDA, for inclusion in a `Propose` instruction's `pda_seeds`.
+/// Vault seed: [literal("multisig_vault__"), arg("create_key")] — two-seed multi-hash.
 pub fn vault_pda_seed_bytes(create_key: &[u8; 32]) -> [u8; 32] {
     use sha2::{Sha256, Digest};
+    let tag = seed_from_str("multisig_vault__");
     let mut hasher = Sha256::new();
-    let mut padded = [0u8; 32];
-    let src: &[u8] = b"multisig_vault___";
-    padded[..src.len()].copy_from_slice(src);
-    hasher.update(&padded);
+    hasher.update(tag);
     hasher.update(create_key);
     hasher.finalize().into()
 }
 
-pub fn compute_vault_pda(
-    program_id: &nssa_core::program::ProgramId,
-    create_key: &[u8; 32],
-) -> nssa_core::account::AccountId {
-    use nssa_core::program::PdaSeed;
-    use nssa_core::account::AccountId;
-    let seed = vault_pda_seed_bytes(create_key);
-    let pda_seed = PdaSeed::new(seed);
-    AccountId::from((program_id, &pda_seed))
+/// PDA for the multisig vault account.
+pub fn compute_vault_pda(program_id: &ProgramId, create_key: &[u8; 32]) -> AccountId {
+    let tag = seed_from_str("multisig_vault__");
+    compute_pda_multi(program_id, &[&tag as &dyn ToSeed, create_key])
 }
 
 use std::ffi::{CStr, CString};
@@ -131,7 +121,7 @@ mod multisig_queries {
     use wallet::WalletCore;
     use serde_json::{Value, json};
     use multisig_core::{MultisigState, Proposal};
-    use crate::multisig::{compute_proposal_pda, compute_multisig_state_pda};
+    use crate::{compute_proposal_pda, compute_multisig_state_pda};
     use nssa_core::account::AccountId;
 
     fn load_wallet(v: &Value) -> Result<WalletCore, String> {
@@ -235,5 +225,39 @@ mod multisig_queries {
                 None => Err("multisig_state not found".to_string()),
             }
         }).unwrap_or_else(|e| json!({"success": false, "error": e}).to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nssa_core::program::ProgramId;
+
+    #[test]
+    fn test_pda_computation_matches_core() {
+        let program_id: ProgramId = [1, 2, 3, 4, 5, 6, 7, 8];
+        let create_key: [u8; 32] = [9; 32];
+        
+        // Verify multisig state PDA matches raw SPEL compute_pda_multi
+        let state_pda = compute_multisig_state_pda(&program_id, &create_key);
+        let expected = spel_framework_core::pda::compute_pda_multi(
+            &program_id,
+            &[&create_key as &dyn spel_framework_core::pda::ToSeed],
+        );
+        assert_eq!(state_pda, expected, "multisig state PDA should match SPEL compute_pda_multi");
+    }
+
+    #[test]
+    fn test_vault_pda_consistent() {
+        let program_id: ProgramId = [1, 2, 3, 4, 5, 6, 7, 8];
+        let create_key: [u8; 32] = [9; 32];
+
+        // compute_vault_pda and vault_pda_seed_bytes must agree
+        let vault_via_fn = compute_vault_pda(&program_id, &create_key);
+        let seed_bytes = vault_pda_seed_bytes(&create_key);
+        let vault_via_seed = nssa_core::account::AccountId::from(
+            (&program_id, &nssa_core::program::PdaSeed::new(seed_bytes))
+        );
+        assert_eq!(vault_via_fn, vault_via_seed, "compute_vault_pda and vault_pda_seed_bytes must agree");
     }
 }

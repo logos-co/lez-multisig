@@ -9,14 +9,14 @@
 // - accounts[2]: proposal PDA account (owned by multisig program)
 // - accounts[3..]: target accounts to pass to the ChainedCall
 
-use nssa_core::account::AccountWithMetadata;
-use nssa_core::program::{AccountPostState, ChainedCall, PdaSeed};
+use nssa_core::account::{Account, AccountWithMetadata};
+use nssa_core::program::{ChainedCall, PdaSeed};
 use multisig_core::{ConfigAction, MultisigState, Proposal, ProposalStatus};
 
 pub fn handle(
     accounts: &[AccountWithMetadata],
     _proposal_index: u64,
-) -> (Vec<AccountPostState>, Vec<ChainedCall>) {
+) -> (Vec<AccountWithMetadata>, Vec<ChainedCall>) {
     assert!(accounts.len() >= 3, "Execute requires at least multisig_state + executor + proposal");
 
     let multisig_account = &accounts[0];
@@ -100,11 +100,14 @@ pub fn handle(
 
         let executor_post = executor_account.account.clone();
 
+        let wrap = |acc: Account, orig: &AccountWithMetadata| AccountWithMetadata {
+            account: acc, account_id: orig.account_id, is_authorized: false,
+        };
         (
             vec![
-                AccountPostState::new(multisig_post),
-                AccountPostState::new(executor_post),
-                AccountPostState::new(proposal_post),
+                wrap(multisig_post, multisig_account),
+                wrap(executor_post, executor_account),
+                wrap(proposal_post, proposal_account),
             ],
             vec![],
         )
@@ -146,20 +149,24 @@ pub fn handle(
             pda_seeds,
         };
 
+        let wrap = |acc: Account, orig: &AccountWithMetadata| AccountWithMetadata {
+            account: acc, account_id: orig.account_id, is_authorized: false,
+        };
+
         let multisig_post = multisig_account.account.clone();
         let executor_post = executor_account.account.clone();
 
-        let mut post_states = vec![
-            AccountPostState::new(multisig_post),
-            AccountPostState::new(executor_post),
-            AccountPostState::new(proposal_post),
+        let mut accounts_out = vec![
+            wrap(multisig_post, multisig_account),
+            wrap(executor_post, executor_account),
+            wrap(proposal_post, proposal_account),
         ];
 
         for target in target_accounts {
-            post_states.push(AccountPostState::new(target.account.clone()));
+            accounts_out.push(target.clone());
         }
 
-        (post_states, vec![chained_call])
+        (accounts_out, vec![chained_call])
     }
 }
 
@@ -216,14 +223,14 @@ mod tests {
             make_account(&[30u8; 32], vec![], false),          // target account
         ];
 
-        let (post_states, chained) = handle(&accounts, 1);
+        let (accounts_out, chained) = handle(&accounts, 1);
 
         assert_eq!(chained.len(), 1);
-        assert_eq!(post_states.len(), 4);
+        assert_eq!(accounts_out.len(), 4);
 
         // Proposal should be marked executed
         let proposal: Proposal = borsh::from_slice(
-            &Vec::from(post_states[2].account().data.clone())
+            &Vec::from(accounts_out[2].account.data.clone())
         ).unwrap();
         assert_eq!(proposal.status, ProposalStatus::Executed);
 
@@ -315,11 +322,11 @@ mod tests {
             make_account(&[20u8; 32], proposal_data, false),
         ];
 
-        let (post_states, chained) = handle(&accounts, 1);
+        let (accounts_out, chained) = handle(&accounts, 1);
 
         assert!(chained.is_empty());
         let state: MultisigState = borsh::from_slice(
-            &Vec::from(post_states[0].account().data.clone())
+            &Vec::from(accounts_out[0].account.data.clone())
         ).unwrap();
         assert_eq!(state.member_count, 4);
         assert!(state.members.contains(&[4u8; 32]));
@@ -340,11 +347,11 @@ mod tests {
             make_account(&[20u8; 32], proposal_data, false),
         ];
 
-        let (post_states, chained) = handle(&accounts, 1);
+        let (accounts_out, chained) = handle(&accounts, 1);
 
         assert!(chained.is_empty());
         let state: MultisigState = borsh::from_slice(
-            &Vec::from(post_states[0].account().data.clone())
+            &Vec::from(accounts_out[0].account.data.clone())
         ).unwrap();
         assert_eq!(state.member_count, 2);
         assert!(!state.members.contains(&[3u8; 32]));
@@ -384,11 +391,11 @@ mod tests {
             make_account(&[20u8; 32], proposal_data, false),
         ];
 
-        let (post_states, chained) = handle(&accounts, 1);
+        let (accounts_out, chained) = handle(&accounts, 1);
 
         assert!(chained.is_empty());
         let state: MultisigState = borsh::from_slice(
-            &Vec::from(post_states[0].account().data.clone())
+            &Vec::from(accounts_out[0].account.data.clone())
         ).unwrap();
         assert_eq!(state.threshold, 3);
     }

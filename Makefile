@@ -2,7 +2,7 @@
 #
 # Prerequisites:
 #   - Rust + risc0 toolchain installed
-#   - wallet CLI installed (`cargo install --path wallet` from lssa repo)
+#   - wallet CLI installed (`cargo install --path wallet` from logos-execution-zone repo)
 #   - Sequencer running locally
 #   - wallet setup done (`wallet setup`)
 #
@@ -16,9 +16,9 @@ SHELL := /bin/bash
 STATE_FILE := .multisig-state
 PROGRAMS_DIR := target/riscv32im-risc0-zkvm-elf/docker
 
-# Token program binary — set this to point to your lssa build
-# e.g. LSSA_DIR=../lssa
-LSSA_DIR ?= $(error Set LSSA_DIR to your lssa repo root, e.g. make build LSSA_DIR=../lssa)
+# Token program binary — set this to point to your logos-execution-zone build
+# e.g. LSSA_DIR=../logos-execution-zone
+LSSA_DIR ?=
 TOKEN_BIN := $(LSSA_DIR)/artifacts/program_methods/token.bin
 
 MULTISIG_BIN := $(PROGRAMS_DIR)/multisig.bin
@@ -104,7 +104,7 @@ help: ## Show this help
 	@echo "  make status                Show saved state (account IDs, etc.)"
 	@echo "  make clean                 Remove saved state"
 	@echo ""
-	@echo "Required env: LSSA_DIR=<path to lssa repo>"
+	@echo "Required env: LSSA_DIR=<path to logos-execution-zone repo>"
 
 build: ## Build the multisig guest binary
 	cargo risczero build --manifest-path methods/guest/Cargo.toml
@@ -146,7 +146,7 @@ clean: ## Remove saved state
 .PHONY: test-e2e
 
 test-e2e: ## Run full E2E tests (requires sequencer running + lssa artifacts)
-	@test -n "$(LSSA_DIR)" || (echo "ERROR: Set LSSA_DIR=<path to lssa repo>"; exit 1)
+	@test -n "$(LSSA_DIR)" || (echo "ERROR: Set LSSA_DIR=<path to logos-execution-zone repo>"; exit 1)
 	@echo "🧪 Running E2E tests..."
 	RISC0_SKIP_BUILD=1 SEQUENCER_URL=http://127.0.0.1:3040 	  MULTISIG_PROGRAM=$(PROGRAMS_DIR)/multisig.bin 	  TOKEN_PROGRAM=$(TOKEN_BIN) 	  cargo test -p lez-multisig-e2e --test e2e_multisig -- --nocapture
 	@echo "✅ E2E tests passed"
