@@ -1,26 +1,80 @@
-name: E2E Tests
+name: SPEL Compatibility Check
 
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      spel_ref:
+        description: 'SPEL branch, tag, commit SHA, or refs/pull/123/head for PRs'
+        required: true
+        default: 'main'
 
 env:
   CARGO_TERM_COLOR: always
   RISC0_VERSION: "3.0.5"
   LSSA_REF: "v0.2.0-rc1"
-  SPEL_REF: "main"
 
 jobs:
   unit-tests:
-    name: Unit Tests
+    name: Unit Tests (SPEL ${{ inputs.spel_ref }})
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "unit"
+          prefix-key: "spel-compat-unit"
+
+      - name: Resolve SPEL ref to SHA
+        id: spel
+        run: |
+          set -eu
+          REF="${{ inputs.spel_ref }}"
+
+          if printf '%s\n' "$REF" | grep -Eq '^[0-9a-fA-F]{40}$'; then
+            SHA=$(printf '%s\n' "$REF" | tr 'A-F' 'a-f')
+          else
+            if printf '%s\n' "$REF" | grep -Eq '^refs/'; then
+              RESOLVED_LINES=$(git ls-remote https://github.com/logos-co/spel.git "$REF^{}")
+              if [ -z "$RESOLVED_LINES" ]; then
+                RESOLVED_LINES=$(git ls-remote https://github.com/logos-co/spel.git "$REF")
+              fi
+            else
+              RESOLVED_LINES=$(git ls-remote https://github.com/logos-co/spel.git \
+                "refs/tags/$REF^{}" \
+                "refs/heads/$REF")
+              if [ -z "$RESOLVED_LINES" ]; then
+                RESOLVED_LINES=$(git ls-remote https://github.com/logos-co/spel.git \
+                  "refs/tags/$REF" \
+                  "refs/heads/$REF")
+              fi
+            fi
+
+            MATCHING_SHAS=$(
+              printf '%s\n' "$RESOLVED_LINES" \
+                | cut -f1 \
+                | grep -E '^[0-9a-fA-F]{40}$' \
+                | tr 'A-F' 'a-f' \
+                | awk '!seen[$0]++'
+            )
+
+            SHA_COUNT=$(printf '%s\n' "$MATCHING_SHAS" | sed '/^$/d' | wc -l | tr -d ' ')
+            if [ "$SHA_COUNT" -ne 1 ]; then
+              echo "Failed to resolve '${{ inputs.spel_ref }}' to exactly one commit SHA" >&2
+              echo "Resolved candidates:" >&2
+              printf '%s\n' "$RESOLVED_LINES" >&2
+              exit 1
+            fi
+
+            SHA=$(printf '%s\n' "$MATCHING_SHAS" | head -n1)
+          fi
+
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Resolved '${{ inputs.spel_ref }}' -> $SHA"
+
+      - name: Patch Cargo.toml SPEL dependencies
+        run: |
+          find . -name "Cargo.toml" | xargs sed -i -E \
+            's|(git = "https://github.com/logos-co/spel\.git"), (branch|rev|tag) = "[^"]*"|\1, rev = "${{ steps.spel.outputs.sha }}"|g'
 
       - name: Install logos-blockchain-circuits
         run: |
@@ -32,7 +86,7 @@ jobs:
         run: |
           cargo install \
             --git https://github.com/logos-co/spel.git \
-            --branch ${{ env.SPEL_REF }} \
+            --rev ${{ steps.spel.outputs.sha }} \
             spel-client-gen \
             --locked
 
@@ -57,12 +111,56 @@ jobs:
         run: cargo build -p lez-multisig-ffi
 
   e2e-tests:
-    name: E2E Tests
+    name: E2E Tests (SPEL ${{ inputs.spel_ref }})
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Resolve SPEL ref to SHA
+        id: spel
+        run: |
+          set -euo pipefail
+
+          REPO_URL="https://github.com/logos-co/spel.git"
+          REF="${{ inputs.spel_ref }}"
+          SHA=""
+
+          if [[ "$REF" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            SHA="$REF"
+          elif [[ "$REF" == refs/* ]]; then
+            mapfile -t SHAS < <(git ls-remote --exit-code "$REPO_URL" "${REF}^{}" "$REF" | awk '{print $1}' | sort -u)
+            if [ "${#SHAS[@]}" -ne 1 ]; then
+              echo "Expected exactly one commit SHA for ref '$REF', found ${#SHAS[@]}" >&2
+              printf 'Resolved SHAs: %s\n' "${SHAS[*]:-<none>}" >&2
+              exit 1
+            fi
+            SHA="${SHAS[0]}"
+          else
+            HEAD_SHA="$(git ls-remote --exit-code "$REPO_URL" "refs/heads/$REF" | awk 'NR==1 {print $1}')"
+            TAG_SHA="$(git ls-remote "$REPO_URL" "refs/tags/$REF^{}" "refs/tags/$REF" | awk 'NR==1 {print $1}')"
+
+            mapfile -t SHAS < <(printf '%s\n%s\n' "$HEAD_SHA" "$TAG_SHA" | awk 'NF' | sort -u)
+            if [ "${#SHAS[@]}" -ne 1 ]; then
+              echo "Expected exactly one commit SHA for ref '$REF', found ${#SHAS[@]}" >&2
+              printf 'Resolved SHAs: %s\n' "${SHAS[*]:-<none>}" >&2
+              exit 1
+            fi
+            SHA="${SHAS[0]}"
+          fi
+
+          if ! [[ "$SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "Resolved value is not a valid 40-character commit SHA: '$SHA'" >&2
+            exit 1
+          fi
+
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Resolved '$REF' -> $SHA"
+      - name: Patch Cargo.toml SPEL dependencies
+        run: |
+          find . -name "Cargo.toml" | xargs sed -i -E \
+            's|(git = "https://github.com/logos-co/spel\.git"), (branch|rev|tag) = "[^"]*"|\1, rev = "${{ steps.spel.outputs.sha }}"|g'
 
       - name: Install risc0 toolchain
         run: |
@@ -88,7 +186,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "e2e"
+          prefix-key: "spel-compat-e2e"
           cache-targets: true
 
       - name: Install logos-blockchain-circuits
@@ -101,7 +199,7 @@ jobs:
         run: |
           cargo install \
             --git https://github.com/logos-co/spel.git \
-            --branch ${{ env.SPEL_REF }} \
+            --rev ${{ steps.spel.outputs.sha }} \
             spel-client-gen \
             --locked
 
@@ -131,7 +229,6 @@ jobs:
           git remote add origin https://github.com/logos-blockchain/logos-execution-zone.git
           git fetch --depth 1 origin ${{ env.LSSA_REF }}
           git checkout FETCH_HEAD
-
 
       - name: Get LSSA commit hash
         id: lssa-hash
