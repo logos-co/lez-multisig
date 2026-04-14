@@ -34,12 +34,19 @@ jobs:
             SHA=$(printf '%s\n' "$REF" | tr 'A-F' 'a-f')
           else
             if printf '%s\n' "$REF" | grep -Eq '^refs/'; then
-              RESOLVED_LINES=$(git ls-remote https://github.com/logos-co/spel.git "$REF" "$REF^{}")
+              RESOLVED_LINES=$(git ls-remote https://github.com/logos-co/spel.git "$REF^{}")
+              if [ -z "$RESOLVED_LINES" ]; then
+                RESOLVED_LINES=$(git ls-remote https://github.com/logos-co/spel.git "$REF")
+              fi
             else
               RESOLVED_LINES=$(git ls-remote https://github.com/logos-co/spel.git \
                 "refs/tags/$REF^{}" \
-                "refs/tags/$REF" \
                 "refs/heads/$REF")
+              if [ -z "$RESOLVED_LINES" ]; then
+                RESOLVED_LINES=$(git ls-remote https://github.com/logos-co/spel.git \
+                  "refs/tags/$REF" \
+                  "refs/heads/$REF")
+              fi
             fi
 
             MATCHING_SHAS=$(
