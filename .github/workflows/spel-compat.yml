@@ -114,13 +114,42 @@ jobs:
       - name: Resolve SPEL ref to SHA
         id: spel
         run: |
-          SHA=$(git ls-remote https://github.com/logos-co/spel.git "${{ inputs.spel_ref }}" | cut -f1)
-          if [ -z "$SHA" ]; then
-            SHA="${{ inputs.spel_ref }}"
-          fi
-          echo "sha=$SHA" >> $GITHUB_OUTPUT
-          echo "Resolved '${{ inputs.spel_ref }}' -> $SHA"
+          set -euo pipefail
 
+          REPO_URL="https://github.com/logos-co/spel.git"
+          REF="${{ inputs.spel_ref }}"
+          SHA=""
+
+          if [[ "$REF" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            SHA="$REF"
+          elif [[ "$REF" == refs/* ]]; then
+            mapfile -t SHAS < <(git ls-remote --exit-code "$REPO_URL" "${REF}^{}" "$REF" | awk '{print $1}' | sort -u)
+            if [ "${#SHAS[@]}" -ne 1 ]; then
+              echo "Expected exactly one commit SHA for ref '$REF', found ${#SHAS[@]}" >&2
+              printf 'Resolved SHAs: %s\n' "${SHAS[*]:-<none>}" >&2
+              exit 1
+            fi
+            SHA="${SHAS[0]}"
+          else
+            HEAD_SHA="$(git ls-remote --exit-code "$REPO_URL" "refs/heads/$REF" | awk 'NR==1 {print $1}')"
+            TAG_SHA="$(git ls-remote "$REPO_URL" "refs/tags/$REF^{}" "refs/tags/$REF" | awk 'NR==1 {print $1}')"
+
+            mapfile -t SHAS < <(printf '%s\n%s\n' "$HEAD_SHA" "$TAG_SHA" | awk 'NF' | sort -u)
+            if [ "${#SHAS[@]}" -ne 1 ]; then
+              echo "Expected exactly one commit SHA for ref '$REF', found ${#SHAS[@]}" >&2
+              printf 'Resolved SHAs: %s\n' "${SHAS[*]:-<none>}" >&2
+              exit 1
+            fi
+            SHA="${SHAS[0]}"
+          fi
+
+          if ! [[ "$SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "Resolved value is not a valid 40-character commit SHA: '$SHA'" >&2
+            exit 1
+          fi
+
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Resolved '$REF' -> $SHA"
       - name: Patch Cargo.toml SPEL dependencies
         run: |
           find . -name "Cargo.toml" | xargs sed -i -E \
