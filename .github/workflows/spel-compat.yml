@@ -27,11 +27,41 @@ jobs:
       - name: Resolve SPEL ref to SHA
         id: spel
         run: |
-          SHA=$(git ls-remote https://github.com/logos-co/spel.git "${{ inputs.spel_ref }}" | cut -f1)
-          if [ -z "$SHA" ]; then
-            SHA="${{ inputs.spel_ref }}"
+          set -eu
+          REF="${{ inputs.spel_ref }}"
+
+          if printf '%s\n' "$REF" | grep -Eq '^[0-9a-fA-F]{40}$'; then
+            SHA=$(printf '%s\n' "$REF" | tr 'A-F' 'a-f')
+          else
+            if printf '%s\n' "$REF" | grep -Eq '^refs/'; then
+              RESOLVED_LINES=$(git ls-remote https://github.com/logos-co/spel.git "$REF" "$REF^{}")
+            else
+              RESOLVED_LINES=$(git ls-remote https://github.com/logos-co/spel.git \
+                "refs/tags/$REF^{}" \
+                "refs/tags/$REF" \
+                "refs/heads/$REF")
+            fi
+
+            MATCHING_SHAS=$(
+              printf '%s\n' "$RESOLVED_LINES" \
+                | cut -f1 \
+                | grep -E '^[0-9a-fA-F]{40}$' \
+                | tr 'A-F' 'a-f' \
+                | awk '!seen[$0]++'
+            )
+
+            SHA_COUNT=$(printf '%s\n' "$MATCHING_SHAS" | sed '/^$/d' | wc -l | tr -d ' ')
+            if [ "$SHA_COUNT" -ne 1 ]; then
+              echo "Failed to resolve '${{ inputs.spel_ref }}' to exactly one commit SHA" >&2
+              echo "Resolved candidates:" >&2
+              printf '%s\n' "$RESOLVED_LINES" >&2
+              exit 1
+            fi
+
+            SHA=$(printf '%s\n' "$MATCHING_SHAS" | head -n1)
           fi
-          echo "sha=$SHA" >> $GITHUB_OUTPUT
+
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Resolved '${{ inputs.spel_ref }}' -> $SHA"
 
       - name: Patch Cargo.toml SPEL dependencies
