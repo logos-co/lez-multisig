@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  SPEL_REF: "main"
 
 jobs:
   check:
@@ -29,8 +30,8 @@ jobs:
       - name: Install spel-client-gen
         run: |
           cargo install \
-            --git https://github.com/jimmy-claw/spel.git \
-            --branch jimmy/update-lssa-latest \
+            --git https://github.com/logos-co/spel.git \
+            --branch ${{ env.SPEL_REF }} \
             spel-client-gen \
             --locked
 

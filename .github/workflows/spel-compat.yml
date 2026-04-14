@@ -1,26 +1,43 @@
-name: E2E Tests
+name: SPEL Compatibility Check
 
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      spel_ref:
+        description: 'SPEL branch, tag, commit SHA, or refs/pull/123/head for PRs'
+        required: true
+        default: 'main'
 
 env:
   CARGO_TERM_COLOR: always
   RISC0_VERSION: "3.0.5"
   LSSA_REF: "v0.2.0-rc1"
-  SPEL_REF: "main"
 
 jobs:
   unit-tests:
-    name: Unit Tests
+    name: Unit Tests (SPEL ${{ inputs.spel_ref }})
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "unit"
+          prefix-key: "spel-compat-unit"
+
+      - name: Resolve SPEL ref to SHA
+        id: spel
+        run: |
+          SHA=$(git ls-remote https://github.com/logos-co/spel.git "${{ inputs.spel_ref }}" | cut -f1)
+          if [ -z "$SHA" ]; then
+            SHA="${{ inputs.spel_ref }}"
+          fi
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "Resolved '${{ inputs.spel_ref }}' -> $SHA"
+
+      - name: Patch Cargo.toml SPEL dependencies
+        run: |
+          find . -name "Cargo.toml" | xargs sed -i -E \
+            's|(git = "https://github.com/logos-co/spel\.git"), (branch|rev|tag) = "[^"]*"|\1, rev = "${{ steps.spel.outputs.sha }}"|g'
 
       - name: Install logos-blockchain-circuits
         run: |
@@ -32,7 +49,7 @@ jobs:
         run: |
           cargo install \
             --git https://github.com/logos-co/spel.git \
-            --branch ${{ env.SPEL_REF }} \
+            --rev ${{ steps.spel.outputs.sha }} \
             spel-client-gen \
             --locked
 
@@ -57,12 +74,27 @@ jobs:
         run: cargo build -p lez-multisig-ffi
 
   e2e-tests:
-    name: E2E Tests
+    name: E2E Tests (SPEL ${{ inputs.spel_ref }})
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Resolve SPEL ref to SHA
+        id: spel
+        run: |
+          SHA=$(git ls-remote https://github.com/logos-co/spel.git "${{ inputs.spel_ref }}" | cut -f1)
+          if [ -z "$SHA" ]; then
+            SHA="${{ inputs.spel_ref }}"
+          fi
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "Resolved '${{ inputs.spel_ref }}' -> $SHA"
+
+      - name: Patch Cargo.toml SPEL dependencies
+        run: |
+          find . -name "Cargo.toml" | xargs sed -i -E \
+            's|(git = "https://github.com/logos-co/spel\.git"), (branch|rev|tag) = "[^"]*"|\1, rev = "${{ steps.spel.outputs.sha }}"|g'
 
       - name: Install risc0 toolchain
         run: |
@@ -88,7 +120,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "e2e"
+          prefix-key: "spel-compat-e2e"
           cache-targets: true
 
       - name: Install logos-blockchain-circuits
@@ -101,7 +133,7 @@ jobs:
         run: |
           cargo install \
             --git https://github.com/logos-co/spel.git \
-            --branch ${{ env.SPEL_REF }} \
+            --rev ${{ steps.spel.outputs.sha }} \
             spel-client-gen \
             --locked
 
@@ -131,7 +163,6 @@ jobs:
           git remote add origin https://github.com/logos-blockchain/logos-execution-zone.git
           git fetch --depth 1 origin ${{ env.LSSA_REF }}
           git checkout FETCH_HEAD
-
 
       - name: Get LSSA commit hash
         id: lssa-hash
