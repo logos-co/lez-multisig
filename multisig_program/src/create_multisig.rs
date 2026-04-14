@@ -25,7 +25,7 @@ pub fn handle(
     create_key: &[u8; 32],
     threshold: u8,
     members: &[[u8; 32]],
-) -> (Vec<Account>, Vec<ChainedCall>) {
+) -> (Vec<AccountWithMetadata>, Vec<ChainedCall>) {
     // Validate inputs
     assert!(!members.is_empty(), "Multisig must have at least one member");
     assert!(threshold >= 1, "Threshold must be at least 1");
@@ -68,15 +68,19 @@ pub fn handle(
     let mut multisig_account = Account::default();
     let state_bytes = borsh::to_vec(&state).unwrap();
     multisig_account.data = state_bytes.try_into().unwrap();
-    
-    // Build accounts: multisig_state + all member accounts
-    // Claiming member accounts satisfies LEZ Rule 7: the executor (a member) must be
-    // owned by the multisig program for Execute to work.
-    // Claim metadata is applied in lib.rs via AutoClaim.
-    let mut result = vec![multisig_account];
+
+    // Build accounts: multisig_state + all member accounts.
+    // Return Vec<AccountWithMetadata> so the lez_program macro can extract
+    // .account from each element in the rest-accounts claims path.
+    let multisig_out = AccountWithMetadata {
+        account: multisig_account,
+        account_id: accounts[0].account_id,
+        is_authorized: false,
+    };
+    let mut result = vec![multisig_out];
 
     for i in 0..members.len() {
-        result.push(accounts[1 + i].account.clone());
+        result.push(accounts[1 + i].clone());
     }
 
     (result, vec![])
@@ -113,7 +117,7 @@ mod tests {
 
         // Verify multisig state was written correctly
         let state: MultisigState = borsh::from_slice(
-            &Vec::from(accounts_out[0].data.clone())
+            &Vec::from(accounts_out[0].account.data.clone())
         ).unwrap();
         assert_eq!(state.threshold, 2);
         assert_eq!(state.member_count, 3);
