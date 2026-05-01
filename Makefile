@@ -53,9 +53,10 @@ GENERATE_IDL_BIN := methods/guest/Cargo.toml
 
 .PHONY: generate generate-idl generate-ffi generate-header check-generated install-tools
 
-install-tools: ## Install spel-client-gen from spel framework (required for generate-ffi)
-	source ~/.cargo/env && cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_FW_TAG) spel-client-gen --locked 2>/dev/null || \
-		cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_FW_TAG) spel-client-gen
+install-tools: ## Install spel-client-gen + cbindgen (required for generate/generate-header)
+	source ~/.cargo/env && cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_TAG) spel-client-gen --locked 2>/dev/null || \
+		cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_TAG) spel-client-gen
+	source ~/.cargo/env && cargo install cbindgen --locked 2>/dev/null || true
 
 generate-idl: ## Regenerate IDL from Rust annotations in lib.rs
 	@echo "🔨 Generating IDL from multisig_program/src/lib.rs..."
