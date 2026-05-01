@@ -85,15 +85,16 @@ generate: ## Regenerate IDL, FFI client, and C header from Rust annotations (run
 generate-header: ## Generate C header from Rust FFI via cbindgen
 	@echo "🔨 Generating C header from lez-multisig-ffi..."
 	@mkdir -p lez-multisig-ffi/include
-	source ~/.cargo/env && cbindgen --config lez-multisig-ffi/cbindgen.toml --crate lez_multisig_ffi --output $(HEADER_H) || \
+	cd lez-multisig-ffi && source ~/.cargo/env && cbindgen --config cbindgen.toml --output ../include/lez_multisig.h || \
 		(echo "ERROR: cbindgen not found. Install with: cargo install cbindgen" && exit 1)
 	@echo "✅ C header written to $(HEADER_H)"
 
 check-generated: ## CI: regenerate and check for drift vs committed state
 	@echo "🔍 Checking for generated file drift..."
 	@$(MAKE) generate > /tmp/generate-output.txt 2>&1 || (cat /tmp/generate-output.txt && exit 1)
-	@git diff --quiet HEAD -- $(IDL_JSON) $(FFI_RS) $(HEADER_H) || \
-		(echo "⚠️ Generated files differ from committed state. Run 'make generate' to update." && exit 1)
+	@# Only the C header is tracked in git; IDL and FFI client are regenerated on every CI run
+	@git diff --quiet HEAD -- $(HEADER_H) || \
+		(echo "⚠️ Generated header differs from committed state. Run 'make generate-header' to update." && exit 1)
 	@echo "✅ No drift detected"
 
 
