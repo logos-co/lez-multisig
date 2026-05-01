@@ -205,12 +205,6 @@ jobs:
           name: multisig-bin
           path: target/riscv32im-risc0-zkvm-elf/docker/
 
-      - name: Create guest bin directory
-        run: mkdir -p target/riscv32im-risc0-zkvm-elf/docker/
-
-      - name: Move guest binary to expected location
-        run: mv multisig.bin target/riscv32im-risc0-zkvm-elf/docker/multisig.bin
-
       - name: Download sequencer
         uses: actions/download-artifact@v4
         with:
