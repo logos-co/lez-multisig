@@ -211,6 +211,9 @@ jobs:
           name: sequencer-bin
           path: /tmp/lssa/target/release/
 
+      - name: Make sequencer executable
+        run: chmod +x /tmp/lssa/target/release/sequencer_service
+
       - name: Download LSSA artifacts
         uses: actions/download-artifact@v4
         with:
