@@ -70,6 +70,8 @@ generate-ffi: ## Regenerate FFI client (multisig.rs) from IDL
 	@# Prepend generated-file header, then append spel-client-gen output
 	@echo "// GENERATED FILE — do not edit manually. Run 'make generate' to regenerate from Rust annotations." > $(FFI_RS)
 	@cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> $(FFI_RS)
+	@# Fix type inference issues in generated code (spel-client-gen omits some annotations)
+	@sed -i 's/let create_key = serde_json::from_value/let create_key: [u8; 32] = serde_json::from_value/g' $(FFI_RS)
 	@echo "✅ FFI client written to $(FFI_RS)"
 
 generate: ## Regenerate IDL, FFI client, and C header from Rust annotations (run after changing lib.rs)
