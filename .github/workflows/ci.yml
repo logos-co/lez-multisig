@@ -8,7 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  SPEL_REF: "main"
+  SPEL_TAG: "v0.2.0-rc.5"
 
 jobs:
   check:
@@ -31,7 +31,7 @@ jobs:
         run: |
           cargo install \
             --git https://github.com/logos-co/spel.git \
-            --branch ${{ env.SPEL_REF }} \
+            --tag ${{ env.SPEL_TAG }} \
             spel-client-gen \
             --locked
 

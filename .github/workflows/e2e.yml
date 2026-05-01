@@ -9,7 +9,7 @@ env:
   CARGO_TERM_COLOR: always
   RISC0_VERSION: "3.0.5"
   LSSA_REF: "v0.2.0-rc1"
-  SPEL_REF: "main"
+  SPEL_TAG: "v0.2.0-rc.5"
 
 jobs:
   unit-tests:
@@ -32,7 +32,7 @@ jobs:
         run: |
           cargo install \
             --git https://github.com/logos-co/spel.git \
-            --branch ${{ env.SPEL_REF }} \
+            --tag ${{ env.SPEL_TAG }} \
             spel-client-gen \
             --locked
 
@@ -56,10 +56,9 @@ jobs:
           RISC0_SKIP_BUILD: "1"
         run: cargo build -p lez-multisig-ffi
 
-  e2e-tests:
-    name: E2E Tests
+  build-guest:
+    name: Build Guest Binary
     runs-on: ubuntu-latest
-    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -88,30 +87,13 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "e2e"
-          cache-targets: true
+          prefix-key: "guest"
 
       - name: Install logos-blockchain-circuits
         run: |
           curl -sSL https://raw.githubusercontent.com/logos-blockchain/logos-blockchain/main/scripts/setup-logos-blockchain-circuits.sh | bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install spel-client-gen
-        run: |
-          cargo install \
-            --git https://github.com/logos-co/spel.git \
-            --branch ${{ env.SPEL_REF }} \
-            spel-client-gen \
-            --locked
-
-      - name: Generate IDL + FFI client
-        run: |
-          cargo run -p lez-multisig-idl-gen > lez-multisig-ffi/src/multisig_idl.json
-          mkdir -p /tmp/lez-ffi-gen
-          spel-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
-          echo '// GENERATED FILE — do not edit manually. Run make generate to regenerate.' > lez-multisig-ffi/src/multisig.rs
-          cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
 
       - name: Cache guest binary
         id: cache-guest
@@ -124,6 +106,19 @@ jobs:
         if: steps.cache-guest.outputs.cache-hit != 'true'
         run: cargo risczero build --manifest-path methods/guest/Cargo.toml
 
+      - name: Upload guest binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: multisig-bin
+          path: target/riscv32im-risc0-zkvm-elf/docker/multisig.bin
+          retention-days: 7
+
+  build-sequencer:
+    name: Build Sequencer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Clone LSSA
         run: |
           git init /tmp/lssa
@@ -132,12 +127,11 @@ jobs:
           git fetch --depth 1 origin ${{ env.LSSA_REF }}
           git checkout FETCH_HEAD
 
-
       - name: Get LSSA commit hash
         id: lssa-hash
         run: echo "hash=$(git -C /tmp/lssa rev-parse HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Cache sequencer
+      - name: Cache sequencer binary
         id: cache-seq
         uses: actions/cache@v4
         with:
@@ -150,10 +144,79 @@ jobs:
           cd /tmp/lssa
           cargo build --release --features standalone -p sequencer_service
 
+      - name: Upload sequencer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sequencer-bin
+          path: /tmp/lssa/target/release/sequencer_service
+          retention-days: 7
+
+      - name: Upload LSSA artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lssa-artifacts
+          path: /tmp/lssa/artifacts/
+          retention-days: 7
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    needs: [build-guest, build-sequencer]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install logos-blockchain-circuits
+        run: |
+          curl -sSL https://raw.githubusercontent.com/logos-blockchain/logos-blockchain/main/scripts/setup-logos-blockchain-circuits.sh | bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install spel-client-gen
+        run: |
+          cargo install \
+            --git https://github.com/logos-co/spel.git \
+            --tag ${{ env.SPEL_TAG }} \
+            spel-client-gen \
+            --locked
+
+      - name: Generate IDL + FFI client
+        run: |
+          cargo run -p lez-multisig-idl-gen > lez-multisig-ffi/src/multisig_idl.json
+          mkdir -p /tmp/lez-ffi-gen
+          spel-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
+          echo '// GENERATED FILE — do not edit manually. Run make generate to regenerate.' > lez-multisig-ffi/src/multisig.rs
+          cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
+
+      - name: Download guest binary
+        uses: actions/download-artifact@v4
+        with:
+          name: multisig-bin
+          path: target/riscv32im-risc0-zkvm-elf/docker/
+
+      - name: Create guest bin directory
+        run: mkdir -p target/riscv32im-risc0-zkvm-elf/docker/
+
+      - name: Move guest binary to expected location
+        run: mv multisig.bin target/riscv32im-risc0-zkvm-elf/docker/multisig.bin
+
+      - name: Download sequencer
+        uses: actions/download-artifact@v4
+        with:
+          name: sequencer-bin
+          path: /tmp/lssa/target/release/
+
+      - name: Download LSSA artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lssa-artifacts
+          path: /tmp/lssa/artifacts/
+
       - name: Start sequencer
         run: |
-          cd /tmp/lssa
-          rm -rf rocksdb
+          mkdir -p /tmp/lssa/rocksdb
+          rm -rf /tmp/lssa/.sequencer_db /tmp/lssa/rocksdb/*
           /tmp/lssa/target/release/sequencer_service sequencer/service/configs/debug/sequencer_config.json > /tmp/sequencer.log 2>&1 &
           echo "Waiting for sequencer..."
           for i in $(seq 1 60); do

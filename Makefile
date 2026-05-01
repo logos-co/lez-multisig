@@ -45,16 +45,17 @@ endef
 # Pipeline: lib.rs → multisig_idl.json → multisig.rs
 
 SPEL_FW_GIT  := https://github.com/logos-co/spel.git
-SPEL_FW_BRANCH := main
+SPEL_FW_TAG  := v0.2.0-rc.5
 IDL_JSON    := lez-multisig-ffi/src/multisig_idl.json
 FFI_RS      := lez-multisig-ffi/src/multisig.rs
+HEADER_H    := lez-multisig-ffi/include/lez_multisig.h
 GENERATE_IDL_BIN := methods/guest/Cargo.toml
 
-.PHONY: generate generate-idl generate-ffi check-generated install-tools
+.PHONY: generate generate-idl generate-ffi generate-header check-generated install-tools
 
 install-tools: ## Install spel-client-gen from spel framework (required for generate-ffi)
-	source ~/.cargo/env && cargo install --git $(SPEL_FW_GIT) --branch $(SPEL_FW_BRANCH) spel-client-gen --locked 2>/dev/null || \
-	cargo install --git $(SPEL_FW_GIT) --branch $(SPEL_FW_BRANCH) spel-client-gen
+	source ~/.cargo/env && cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_FW_TAG) spel-client-gen --locked 2>/dev/null || \
+		cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_FW_TAG) spel-client-gen
 
 generate-idl: ## Regenerate IDL from Rust annotations in lib.rs
 	@echo "🔨 Generating IDL from multisig_program/src/lib.rs..."
@@ -71,17 +72,27 @@ generate-ffi: ## Regenerate FFI client (multisig.rs) from IDL
 	@cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> $(FFI_RS)
 	@echo "✅ FFI client written to $(FFI_RS)"
 
-generate: ## Regenerate IDL and FFI client from Rust annotations (run after changing lib.rs)
+generate: ## Regenerate IDL, FFI client, and C header from Rust annotations (run after changing lib.rs)
 	@echo "🔄 Regenerating all generated files..."
 	$(MAKE) generate-idl
 	$(MAKE) generate-ffi
+	$(MAKE) generate-header
 	@echo ""
 	@echo "✅ Generation complete. Run 'cargo check' to verify."
+
+generate-header: ## Generate C header from Rust FFI via cbindgen
+	@echo "🔨 Generating C header from lez-multisig-ffi..."
+	@mkdir -p lez-multisig-ffi/include
+	source ~/.cargo/env && cbindgen --config lez-multisig-ffi/cbindgen.toml --crate lez_multisig_ffi --output $(HEADER_H) || \
+		(echo "ERROR: cbindgen not found. Install with: cargo install cbindgen" && exit 1)
+	@echo "✅ C header written to $(HEADER_H)"
 
 check-generated: ## CI: regenerate and check for drift vs committed state
 	@echo "🔍 Checking for generated file drift..."
 	@$(MAKE) generate > /tmp/generate-output.txt 2>&1 || (cat /tmp/generate-output.txt && exit 1)
-	@echo "✅ Generation succeeded"
+	@git diff --quiet HEAD -- $(IDL_JSON) $(FFI_RS) $(HEADER_H) || \
+		(echo "⚠️ Generated files differ from committed state. Run 'make generate' to update." && exit 1)
+	@echo "✅ No drift detected"
 
 
 .PHONY: help build build-cli deploy status clean test
