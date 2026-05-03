@@ -9,7 +9,6 @@ env:
   CARGO_TERM_COLOR: always
   RISC0_VERSION: "3.0.5"
   LSSA_REF: "v0.2.0-rc1"
-  SPEL_REF: "main"
 
 jobs:
   unit-tests:
@@ -30,9 +29,10 @@ jobs:
 
       - name: Install spel-client-gen
         run: |
+          SPEL_TAG=$(grep -m1 'spel-framework.*tag = ' lez-multisig-ffi/Cargo.toml | sed 's/.*tag = "\([^"]*\)".*/\1/')
           cargo install \
             --git https://github.com/logos-co/spel.git \
-            --branch ${{ env.SPEL_REF }} \
+            --tag "$SPEL_TAG" \
             spel-client-gen \
             --locked
 
@@ -101,9 +101,10 @@ jobs:
 
       - name: Install spel-client-gen
         run: |
+          SPEL_TAG=$(grep -m1 'spel-framework.*tag = ' lez-multisig-ffi/Cargo.toml | sed 's/.*tag = "\([^"]*\)".*/\1/')
           cargo install \
             --git https://github.com/logos-co/spel.git \
-            --branch ${{ env.SPEL_REF }} \
+            --tag "$SPEL_TAG" \
             spel-client-gen \
             --locked
 
