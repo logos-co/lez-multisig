@@ -36,6 +36,9 @@ jobs:
             spel-client-gen \
             --locked
 
+      - name: Install cbindgen
+        run: cargo install cbindgen --locked
+
       - name: Generate IDL + FFI client + C header
         env:
           RISC0_SKIP_BUILD: "1"
@@ -48,7 +51,7 @@ jobs:
           # Fix type inference issues in generated code (spel-client-gen omits some annotations)
           sed -i 's/let create_key = serde_json::from_value/let create_key: [u8; 32] = serde_json::from_value/g' lez-multisig-ffi/src/multisig.rs
           mkdir -p lez-multisig-ffi/include
-          cd lez-multisig-ffi && cbindgen --config cbindgen.toml --output ../include/lez_multisig.h || true
+          cd lez-multisig-ffi && cbindgen --config cbindgen.toml --output ../include/lez_multisig.h
 
       - name: Run unit tests
         env:
@@ -109,6 +112,9 @@ jobs:
             spel-client-gen \
             --locked
 
+      - name: Install cbindgen
+        run: cargo install cbindgen --locked
+
       - name: Generate IDL + FFI client + C header
         run: |
           cargo run -p lez-multisig-idl-gen > lez-multisig-ffi/src/multisig_idl.json
@@ -119,7 +125,7 @@ jobs:
           # Fix type inference issues in generated code (spel-client-gen omits some annotations)
           sed -i 's/let create_key = serde_json::from_value/let create_key: [u8; 32] = serde_json::from_value/g' lez-multisig-ffi/src/multisig.rs
           mkdir -p lez-multisig-ffi/include
-          cd lez-multisig-ffi && cbindgen --config cbindgen.toml --output ../include/lez_multisig.h || true
+          cd lez-multisig-ffi && cbindgen --config cbindgen.toml --output ../include/lez_multisig.h
 
       - name: Cache guest binary
         id: cache-guest

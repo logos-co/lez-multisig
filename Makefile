@@ -45,7 +45,7 @@ endef
 # Pipeline: lib.rs → multisig_idl.json → multisig.rs
 
 SPEL_FW_GIT  := https://github.com/logos-co/spel.git
-SPEL_FW_TAG  := v0.2.0-rc.5
+SPEL_FW_TAG  := $(shell grep -m1 'spel-framework.*tag = ' lez-multisig-ffi/Cargo.toml | sed 's/.*tag = "\([^"]*\)".*/\1/')
 IDL_JSON    := lez-multisig-ffi/src/multisig_idl.json
 FFI_RS      := lez-multisig-ffi/src/multisig.rs
 HEADER_H    := lez-multisig-ffi/include/lez_multisig.h
@@ -54,8 +54,8 @@ GENERATE_IDL_BIN := methods/guest/Cargo.toml
 .PHONY: generate generate-idl generate-ffi generate-header check-generated install-tools
 
 install-tools: ## Install spel-client-gen + cbindgen (required for generate/generate-header)
-	source ~/.cargo/env && cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_TAG) spel-client-gen --locked 2>/dev/null || \
-		cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_TAG) spel-client-gen
+	source ~/.cargo/env && cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_FW_TAG) spel-client-gen --locked 2>/dev/null || \
+		cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_FW_TAG) spel-client-gen
 	source ~/.cargo/env && cargo install cbindgen --locked 2>/dev/null || true
 
 generate-idl: ## Regenerate IDL from Rust annotations in lib.rs
