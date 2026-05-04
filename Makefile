@@ -45,16 +45,18 @@ endef
 # Pipeline: lib.rs → multisig_idl.json → multisig.rs
 
 SPEL_FW_GIT  := https://github.com/logos-co/spel.git
-SPEL_FW_BRANCH := main
+SPEL_FW_TAG  := $(shell grep -m1 'spel-framework.*tag = ' lez-multisig-ffi/Cargo.toml | sed 's/.*tag = "\([^"]*\)".*/\1/')
 IDL_JSON    := lez-multisig-ffi/src/multisig_idl.json
 FFI_RS      := lez-multisig-ffi/src/multisig.rs
+HEADER_H    := lez-multisig-ffi/include/lez_multisig.h
 GENERATE_IDL_BIN := methods/guest/Cargo.toml
 
-.PHONY: generate generate-idl generate-ffi check-generated install-tools
+.PHONY: generate generate-idl generate-ffi generate-header check-generated install-tools
 
-install-tools: ## Install spel-client-gen from spel framework (required for generate-ffi)
-	source ~/.cargo/env && cargo install --git $(SPEL_FW_GIT) --branch $(SPEL_FW_BRANCH) spel-client-gen --locked 2>/dev/null || \
-	cargo install --git $(SPEL_FW_GIT) --branch $(SPEL_FW_BRANCH) spel-client-gen
+install-tools: ## Install spel-client-gen + cbindgen (required for generate/generate-header)
+	source ~/.cargo/env && cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_FW_TAG) spel-client-gen --locked 2>/dev/null || \
+		cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_FW_TAG) spel-client-gen
+	source ~/.cargo/env && cargo install cbindgen --locked 2>/dev/null || true
 
 generate-idl: ## Regenerate IDL from Rust annotations in lib.rs
 	@echo "🔨 Generating IDL from multisig_program/src/lib.rs..."
@@ -69,19 +71,32 @@ generate-ffi: ## Regenerate FFI client (multisig.rs) from IDL
 	@# Prepend generated-file header, then append spel-client-gen output
 	@echo "// GENERATED FILE — do not edit manually. Run 'make generate' to regenerate from Rust annotations." > $(FFI_RS)
 	@cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> $(FFI_RS)
+	@# Fix type inference issues in generated code (spel-client-gen omits some annotations)
+	@sed -i 's/let create_key = serde_json::from_value/let create_key: [u8; 32] = serde_json::from_value/g' $(FFI_RS)
 	@echo "✅ FFI client written to $(FFI_RS)"
 
-generate: ## Regenerate IDL and FFI client from Rust annotations (run after changing lib.rs)
+generate: ## Regenerate IDL, FFI client, and C header from Rust annotations (run after changing lib.rs)
 	@echo "🔄 Regenerating all generated files..."
 	$(MAKE) generate-idl
 	$(MAKE) generate-ffi
+	$(MAKE) generate-header
 	@echo ""
 	@echo "✅ Generation complete. Run 'cargo check' to verify."
+
+generate-header: ## Generate C header from Rust FFI via cbindgen
+	@echo "🔨 Generating C header from lez-multisig-ffi..."
+	@mkdir -p lez-multisig-ffi/include
+	cd lez-multisig-ffi && source ~/.cargo/env && cbindgen --config cbindgen.toml --output include/lez_multisig.h || \
+		(echo "ERROR: cbindgen not found. Install with: cargo install cbindgen" && exit 1)
+	@echo "✅ C header written to $(HEADER_H)"
 
 check-generated: ## CI: regenerate and check for drift vs committed state
 	@echo "🔍 Checking for generated file drift..."
 	@$(MAKE) generate > /tmp/generate-output.txt 2>&1 || (cat /tmp/generate-output.txt && exit 1)
-	@echo "✅ Generation succeeded"
+	@# Only the C header is tracked in git; IDL and FFI client are regenerated on every CI run
+	@git diff --quiet HEAD -- $(HEADER_H) || \
+		(echo "⚠️ Generated header differs from committed state. Run 'make generate-header' to update." && exit 1)
+	@echo "✅ No drift detected"
 
 
 .PHONY: help build build-cli deploy status clean test

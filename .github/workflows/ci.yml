@@ -8,7 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  SPEL_REF: "main"
+  SPEL_TAG: "v0.2.0-rc.5"
 
 jobs:
   check:
@@ -31,9 +31,12 @@ jobs:
         run: |
           cargo install \
             --git https://github.com/logos-co/spel.git \
-            --branch ${{ env.SPEL_REF }} \
+            --tag ${{ env.SPEL_TAG }} \
             spel-client-gen \
             --locked
+
+      - name: Install cbindgen
+        run: cargo install cbindgen --locked
 
       - name: Generate IDL from Rust annotations
         run: |
@@ -46,7 +49,20 @@ jobs:
           spel-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
           echo '// GENERATED FILE — do not edit manually. Run make generate to regenerate.' > lez-multisig-ffi/src/multisig.rs
           cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
-          echo "✅ FFI client generated"
+          # Fix type inference issues in generated code (spel-client-gen omits some annotations)
+          sed -i 's/let create_key = serde_json::from_value/let create_key: [u8; 32] = serde_json::from_value/g' lez-multisig-ffi/src/multisig.rs
+          grep -q 'let create_key: \[u8; 32\] = serde_json::from_value' lez-multisig-ffi/src/multisig.rs || \
+            (echo "ERROR: type annotation patch for create_key did not apply — spel-client-gen output may have changed" && exit 1)
+          # Generate C header via cbindgen
+          mkdir -p lez-multisig-ffi/include
+          cd lez-multisig-ffi && cbindgen --config cbindgen.toml --output include/lez_multisig.h
+          echo "✅ FFI client and C header generated"
+
+      - name: Check for generated file drift
+        run: |
+          git diff --quiet HEAD -- lez-multisig-ffi/include/lez_multisig.h || \
+            (echo "⚠️ C header drift detected. Run 'make generate-header' to update." && exit 1)
+          echo "✅ No drift detected"
 
       - name: Run unit tests
         env:
