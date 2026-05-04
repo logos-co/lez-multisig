@@ -86,7 +86,7 @@ generate: ## Regenerate IDL, FFI client, and C header from Rust annotations (run
 generate-header: ## Generate C header from Rust FFI via cbindgen
 	@echo "🔨 Generating C header from lez-multisig-ffi..."
 	@mkdir -p lez-multisig-ffi/include
-	cd lez-multisig-ffi && source ~/.cargo/env && cbindgen --config cbindgen.toml --output ../include/lez_multisig.h || \
+	cd lez-multisig-ffi && source ~/.cargo/env && cbindgen --config cbindgen.toml --output include/lez_multisig.h || \
 		(echo "ERROR: cbindgen not found. Install with: cargo install cbindgen" && exit 1)
 	@echo "✅ C header written to $(HEADER_H)"
 
