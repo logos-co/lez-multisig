@@ -45,7 +45,7 @@ endef
 # Pipeline: lib.rs → multisig_idl.json → multisig.rs
 
 SPEL_FW_GIT  := https://github.com/logos-co/spel.git
-SPEL_FW_BRANCH := main
+SPEL_FW_TAG  := $(shell grep -m1 'spel-framework.*tag = ' lez-multisig-ffi/Cargo.toml | sed 's/.*tag = "\([^"]*\)".*/\1/')
 IDL_JSON    := lez-multisig-ffi/src/multisig_idl.json
 FFI_RS      := lez-multisig-ffi/src/multisig.rs
 GENERATE_IDL_BIN := methods/guest/Cargo.toml
@@ -53,8 +53,8 @@ GENERATE_IDL_BIN := methods/guest/Cargo.toml
 .PHONY: generate generate-idl generate-ffi check-generated install-tools
 
 install-tools: ## Install spel-client-gen from spel framework (required for generate-ffi)
-	source ~/.cargo/env && cargo install --git $(SPEL_FW_GIT) --branch $(SPEL_FW_BRANCH) spel-client-gen --locked 2>/dev/null || \
-	cargo install --git $(SPEL_FW_GIT) --branch $(SPEL_FW_BRANCH) spel-client-gen
+	source ~/.cargo/env && cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_FW_TAG) spel-client-gen --locked 2>/dev/null || \
+	cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_FW_TAG) spel-client-gen
 
 generate-idl: ## Regenerate IDL from Rust annotations in lib.rs
 	@echo "🔨 Generating IDL from multisig_program/src/lib.rs..."
@@ -69,6 +69,8 @@ generate-ffi: ## Regenerate FFI client (multisig.rs) from IDL
 	@# Prepend generated-file header, then append spel-client-gen output
 	@echo "// GENERATED FILE — do not edit manually. Run 'make generate' to regenerate from Rust annotations." > $(FFI_RS)
 	@cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> $(FFI_RS)
+	@# Fix type inference gap in generated code (spel-client-gen omits [u8; 32] annotation on create_key)
+	@sed -i 's/let create_key = serde_json::from_value/let create_key: [u8; 32] = serde_json::from_value/g' $(FFI_RS)
 	@echo "✅ FFI client written to $(FFI_RS)"
 
 generate: ## Regenerate IDL and FFI client from Rust annotations (run after changing lib.rs)

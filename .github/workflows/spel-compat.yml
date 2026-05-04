@@ -6,7 +6,7 @@ on:
       spel_ref:
         description: 'SPEL branch, tag, commit SHA, or refs/pull/123/head for PRs'
         required: true
-        default: 'main'
+        default: 'v0.2.0-rc.5'
 
 env:
   CARGO_TERM_COLOR: always
