@@ -47,6 +47,8 @@ jobs:
           cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
           # Fix type inference issues in generated code (spel-client-gen omits some annotations)
           sed -i 's/let create_key = serde_json::from_value/let create_key: [u8; 32] = serde_json::from_value/g' lez-multisig-ffi/src/multisig.rs
+          grep -q 'let create_key: \[u8; 32\] = serde_json::from_value' lez-multisig-ffi/src/multisig.rs || \
+            (echo "ERROR: type annotation patch for create_key did not apply — spel-client-gen output may have changed" && exit 1)
 
       - name: Run unit tests
         env:
@@ -117,6 +119,8 @@ jobs:
           cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
           # Fix type inference issues in generated code (spel-client-gen omits some annotations)
           sed -i 's/let create_key = serde_json::from_value/let create_key: [u8; 32] = serde_json::from_value/g' lez-multisig-ffi/src/multisig.rs
+          grep -q 'let create_key: \[u8; 32\] = serde_json::from_value' lez-multisig-ffi/src/multisig.rs || \
+            (echo "ERROR: type annotation patch for create_key did not apply — spel-client-gen output may have changed" && exit 1)
 
       - name: Cache guest binary
         id: cache-guest
