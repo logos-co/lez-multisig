@@ -8,7 +8,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  SPEL_REF: "main"
 
 jobs:
   check:
@@ -29,9 +28,10 @@ jobs:
 
       - name: Install spel-client-gen
         run: |
+          SPEL_TAG=$(grep -m1 'git = "https://github.com/logos-co/spel.git"' lez-multisig-ffi/Cargo.toml | grep -oP 'tag = "\K[^"]+')
           cargo install \
             --git https://github.com/logos-co/spel.git \
-            --branch ${{ env.SPEL_REF }} \
+            --tag "$SPEL_TAG" \
             spel-client-gen \
             --locked
 
