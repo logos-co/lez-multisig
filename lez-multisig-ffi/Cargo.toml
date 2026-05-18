@@ -9,7 +9,7 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
 multisig_core = { path = "../multisig_core" }
-spel-framework-core = { git = "https://github.com/logos-co/spel.git", branch = "main" }
+spel-framework-core = { git = "https://github.com/logos-co/spel.git", tag = "v0.3.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
@@ -19,10 +19,10 @@ hex = "0.4"
 bs58 = "0.5"
 
 # nssa deps for transaction building
-nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1", features = ["host"] }
-nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1" }
-common = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1" }
-wallet = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1" }
+nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3", features = ["host"] }
+nssa = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3" }
+common = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3" }
+wallet = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3" }
 borsh = "1.5"
 sha2 = "0.10"
-sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc1" }
+sequencer_service_rpc = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.0-rc3" }

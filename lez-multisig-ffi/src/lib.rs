@@ -255,8 +255,8 @@ mod tests {
         // compute_vault_pda and vault_pda_seed_bytes must agree
         let vault_via_fn = compute_vault_pda(&program_id, &create_key);
         let seed_bytes = vault_pda_seed_bytes(&create_key);
-        let vault_via_seed = nssa_core::account::AccountId::from(
-            (&program_id, &nssa_core::program::PdaSeed::new(seed_bytes))
+        let vault_via_seed = nssa_core::account::AccountId::for_public_pda(
+            &program_id, &nssa_core::program::PdaSeed::new(seed_bytes)
         );
         assert_eq!(vault_via_fn, vault_via_seed, "compute_vault_pda and vault_pda_seed_bytes must agree");
     }
