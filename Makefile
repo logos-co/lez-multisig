@@ -69,6 +69,8 @@ generate-ffi: ## Regenerate FFI client (multisig.rs) from IDL
 	@# Prepend generated-file header, then append spel-client-gen output
 	@echo "// GENERATED FILE — do not edit manually. Run 'make generate' to regenerate from Rust annotations." > $(FFI_RS)
 	@cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> $(FFI_RS)
+	@# spel-client-gen omits the [u8; 32] type on create_key; Rust can't infer it from .as_ref() alone (E0282).
+	@# Remove once upstream fixes: https://github.com/logos-co/spel/issues/200
 	@sed -i 's#let create_key = serde_json::from_value#let create_key: [u8; 32] = serde_json::from_value#g' $(FFI_RS)
 	@grep -q 'create_key: \[u8; 32\]' $(FFI_RS) || (echo "ERROR: create_key type patch did not apply" && exit 1)
 	@echo "✅ FFI client written to $(FFI_RS)"

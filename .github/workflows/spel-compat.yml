@@ -99,6 +99,10 @@ jobs:
           spel-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
           echo '// GENERATED FILE — do not edit manually. Run make generate to regenerate.' > lez-multisig-ffi/src/multisig.rs
           cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
+          # spel-client-gen omits the [u8; 32] type on create_key; Rust can't infer it from .as_ref() alone (E0282).
+          # Remove once upstream fixes: https://github.com/logos-co/spel/issues/200
+          sed -i 's#let create_key = serde_json::from_value#let create_key: [u8; 32] = serde_json::from_value#g' lez-multisig-ffi/src/multisig.rs
+          grep -q 'create_key: \[u8; 32\]' lez-multisig-ffi/src/multisig.rs || (echo "ERROR: create_key type patch did not apply" && exit 1)
 
       - name: Run unit tests
         env:
@@ -210,6 +214,10 @@ jobs:
           spel-client-gen --idl lez-multisig-ffi/src/multisig_idl.json --out-dir /tmp/lez-ffi-gen
           echo '// GENERATED FILE — do not edit manually. Run make generate to regenerate.' > lez-multisig-ffi/src/multisig.rs
           cat /tmp/lez-ffi-gen/multisig_program_ffi.rs >> lez-multisig-ffi/src/multisig.rs
+          # spel-client-gen omits the [u8; 32] type on create_key; Rust can't infer it from .as_ref() alone (E0282).
+          # Remove once upstream fixes: https://github.com/logos-co/spel/issues/200
+          sed -i 's#let create_key = serde_json::from_value#let create_key: [u8; 32] = serde_json::from_value#g' lez-multisig-ffi/src/multisig.rs
+          grep -q 'create_key: \[u8; 32\]' lez-multisig-ffi/src/multisig.rs || (echo "ERROR: create_key type patch did not apply" && exit 1)
 
       - name: Cache guest binary
         id: cache-guest
