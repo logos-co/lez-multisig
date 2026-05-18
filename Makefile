@@ -48,13 +48,15 @@ SPEL_FW_GIT  := https://github.com/logos-co/spel.git
 SPEL_FW_TAG  := $(shell grep -m1 'git = "https://github.com/logos-co/spel.git"' lez-multisig-ffi/Cargo.toml | grep -oP 'tag = "\K[^"]+')
 IDL_JSON    := lez-multisig-ffi/src/multisig_idl.json
 FFI_RS      := lez-multisig-ffi/src/multisig.rs
+HEADER_H    := lez-multisig-ffi/include/lez_multisig.h
 GENERATE_IDL_BIN := methods/guest/Cargo.toml
 
-.PHONY: generate generate-idl generate-ffi check-generated install-tools
+.PHONY: generate generate-idl generate-ffi generate-header check-generated install-tools
 
-install-tools: ## Install spel-client-gen from spel framework (required for generate-ffi)
+install-tools: ## Install spel-client-gen + cbindgen (required for generate/generate-header)
 	source ~/.cargo/env && cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_FW_TAG) spel-client-gen --locked 2>/dev/null || \
 	cargo install --git $(SPEL_FW_GIT) --tag $(SPEL_FW_TAG) spel-client-gen
+	source ~/.cargo/env && cargo install cbindgen --version 0.29.2 --locked 2>/dev/null || true
 
 generate-idl: ## Regenerate IDL from Rust annotations in lib.rs
 	@echo "🔨 Generating IDL from multisig_program/src/lib.rs..."
@@ -75,17 +77,28 @@ generate-ffi: ## Regenerate FFI client (multisig.rs) from IDL
 	@grep -q 'create_key: \[u8; 32\]' $(FFI_RS) || (echo "ERROR: create_key type patch did not apply" && exit 1)
 	@echo "✅ FFI client written to $(FFI_RS)"
 
-generate: ## Regenerate IDL and FFI client from Rust annotations (run after changing lib.rs)
+generate: ## Regenerate IDL, FFI client, and C header from Rust annotations (run after changing lib.rs)
 	@echo "🔄 Regenerating all generated files..."
 	$(MAKE) generate-idl
 	$(MAKE) generate-ffi
+	$(MAKE) generate-header
 	@echo ""
 	@echo "✅ Generation complete. Run 'cargo check' to verify."
+
+generate-header: ## Generate C header from Rust FFI via cbindgen
+	@echo "🔨 Generating C header from lez-multisig-ffi..."
+	@mkdir -p lez-multisig-ffi/include
+	cd lez-multisig-ffi && source ~/.cargo/env && cbindgen --config cbindgen.toml --output include/lez_multisig.h || \
+		(echo "ERROR: cbindgen not found. Install with: cargo install cbindgen" && exit 1)
+	@echo "✅ C header written to $(HEADER_H)"
 
 check-generated: ## CI: regenerate and check for drift vs committed state
 	@echo "🔍 Checking for generated file drift..."
 	@$(MAKE) generate > /tmp/generate-output.txt 2>&1 || (cat /tmp/generate-output.txt && exit 1)
-	@echo "✅ Generation succeeded"
+	@# Only the C header is tracked in git; IDL and FFI client are regenerated each CI run
+	@git diff --quiet HEAD -- $(HEADER_H) || \
+		(echo "⚠️ C header drift detected. Run 'make generate-header' to update." && exit 1)
+	@echo "✅ No drift detected"
 
 
 .PHONY: help build build-cli deploy status clean test
@@ -94,11 +107,12 @@ help: ## Show this help
 	@echo "Multisig Program — Make Targets"
 	@echo ""
 	@echo "  Code Generation (start here after changing lib.rs):"
-	@echo "  make install-tools         Install spel-client-gen tool (first-time setup)"
-	@echo "  make generate              Regen IDL + FFI client from lib.rs annotations"
+	@echo "  make install-tools         Install spel-client-gen + cbindgen (first-time setup)"
+	@echo "  make generate              Regen IDL + FFI client + C header from lib.rs annotations"
 	@echo "  make generate-idl          Regen IDL only"
 	@echo "  make generate-ffi          Regen FFI client only (requires IDL)"
-	@echo "  make check-generated       CI: regenerate and verify no drift"
+	@echo "  make generate-header       Regen C header via cbindgen (requires cbindgen)"
+	@echo "  make check-generated       CI: regenerate and verify C header not drifted"
 	@echo ""
 	@echo "  Build & Deploy:"
 	@echo "  make build                 Build the guest binary (needs risc0 toolchain)"

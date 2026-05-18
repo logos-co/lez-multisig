@@ -61,42 +61,80 @@ fn error_str(msg: &str) -> *mut c_char {
 }
 
 // ── Generated instruction wrappers ───────────────────────────────────────────
+//
+// All functions below:
+//   - Take args_json: UTF-8 JSON string (null-terminated C string), caller owns.
+//   - Return a heap-allocated UTF-8 JSON string (null-terminated) that the caller
+//     MUST free with lez_multisig_free_string(). Never pass the pointer to free().
+//   - On error: {"success": false, "error": "<message>"}
+//   - On success: see individual function docs.
 
+/// Create a new M-of-N multisig.
+///
+/// args_json: {"threshold": u32, "members": [hex_pubkey, ...], "create_key": hex32,
+///             "program_id_hex": hex64, "wallet_path": "/path/to/wallet"}
+/// Returns: {"success": true, "tx_hash": "..."}
 #[no_mangle]
 pub extern "C" fn lez_multisig_create(args_json: *const c_char) -> *mut c_char {
     multisig::multisig_program_create_multisig(args_json)
 }
 
+/// Submit a transaction proposal to a multisig.
+///
+/// args_json: {"create_key": hex32, "program_id_hex": hex64, "wallet_path": "...",
+///             "pda_seeds": [...], "payload": {...}}
+/// Returns: {"success": true, "tx_hash": "...", "proposal_index": u64}
 #[no_mangle]
 pub extern "C" fn lez_multisig_propose(args_json: *const c_char) -> *mut c_char {
     multisig::multisig_program_propose(args_json)
 }
 
+/// Approve a pending proposal.
+///
+/// args_json: {"create_key": hex32, "proposal_index": u64,
+///             "program_id_hex": hex64, "wallet_path": "..."}
+/// Returns: {"success": true, "tx_hash": "..."}
 #[no_mangle]
 pub extern "C" fn lez_multisig_approve(args_json: *const c_char) -> *mut c_char {
     multisig::multisig_program_approve(args_json)
 }
 
+/// Reject a pending proposal.
+///
+/// args_json: {"create_key": hex32, "proposal_index": u64,
+///             "program_id_hex": hex64, "wallet_path": "..."}
+/// Returns: {"success": true, "tx_hash": "..."}
 #[no_mangle]
 pub extern "C" fn lez_multisig_reject(args_json: *const c_char) -> *mut c_char {
     multisig::multisig_program_reject(args_json)
 }
 
+/// Execute an approved proposal.
+///
+/// args_json: {"create_key": hex32, "proposal_index": u64,
+///             "program_id_hex": hex64, "wallet_path": "..."}
+/// Returns: {"success": true, "tx_hash": "..."}
 #[no_mangle]
 pub extern "C" fn lez_multisig_execute(args_json: *const c_char) -> *mut c_char {
     multisig::multisig_program_execute(args_json)
 }
 
+/// Free a string returned by any lez_multisig_* function.
+/// Must be called exactly once per returned pointer. Do NOT pass to libc free().
 #[no_mangle]
 pub extern "C" fn lez_multisig_free_string(s: *mut c_char) {
     multisig::multisig_program_free_string(s)
 }
 
+/// Return the library version string as a JSON object.
+/// Returns: {"version": "x.y.z"}  — caller must free with lez_multisig_free_string.
 #[no_mangle]
 pub extern "C" fn lez_multisig_version() -> *mut c_char {
     multisig::multisig_program_version()
 }
 
+/// Return the program IDL (JSON schema) as a string.
+/// Returns: the raw IDL JSON — caller must free with lez_multisig_free_string.
 #[no_mangle]
 pub extern "C" fn lez_multisig_get_idl() -> *mut c_char {
     const IDL_JSON: &str = include_str!("multisig_idl.json");
@@ -105,12 +143,24 @@ pub extern "C" fn lez_multisig_get_idl() -> *mut c_char {
 
 // ── Read-only helpers (not in IDL) ───────────────────────────────────────────
 
+/// List all proposals for a multisig.
+///
+/// args_json: {"multisig_state": "<account_id>", "program_id_hex": hex64,
+///             "wallet_path": "..."}
+/// Returns: {"success": true, "proposals": [{index, status, proposer, approvals,
+///           rejections, threshold}, ...]}
 #[no_mangle]
 pub extern "C" fn lez_multisig_list_proposals(args_json: *const c_char) -> *mut c_char {
     let args = match cstr_to_str(args_json) { Ok(s) => s, Err(e) => return error_str(&e) };
     to_cstring(multisig_queries::list_proposals(args))
 }
 
+/// Get the current state of a multisig.
+///
+/// args_json: {"create_key": hex32, "program_id_hex": hex64, "wallet_path": "..."}
+/// Returns: {"success": true, "threshold": u32, "member_count": u32,
+///           "members": [hex_pubkey, ...], "transaction_index": u64,
+///           "multisig_state_id": "<account_id>"}
 #[no_mangle]
 pub extern "C" fn lez_multisig_get_state(args_json: *const c_char) -> *mut c_char {
     let args = match cstr_to_str(args_json) { Ok(s) => s, Err(e) => return error_str(&e) };
