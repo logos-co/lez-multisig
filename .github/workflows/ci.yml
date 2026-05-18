@@ -36,7 +36,7 @@ jobs:
             --locked
 
       - name: Install cbindgen
-        run: cargo install cbindgen --locked
+        run: cargo install cbindgen --version 0.29.2 --locked
 
       - name: Generate IDL from Rust annotations
         run: |
