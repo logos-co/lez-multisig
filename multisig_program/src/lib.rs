@@ -49,6 +49,7 @@ mod multisig_program {
         target_program_id: ProgramId,
         target_instruction_data: Vec<u32>,
         target_account_count: u8,
+        target_account_ids: Vec<[u8; 32]>,
         pda_seeds: Vec<[u8; 32]>,
         authorized_indices: Vec<u8>,
         create_key: [u8; 32],
@@ -60,6 +61,7 @@ mod multisig_program {
             &target_program_id,
             &target_instruction_data,
             target_account_count,
+            &target_account_ids,
             &pda_seeds,
             &authorized_indices,
         );

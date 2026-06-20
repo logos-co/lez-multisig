@@ -50,6 +50,10 @@ pub enum Instruction {
         target_instruction_data: Vec<u32>,
         /// Number of target accounts that will be passed at execute time.
         target_account_count: u8,
+        /// Account IDs of the external target accounts, committed at proposal
+        /// time and verified at execute time. Without these, an executor could
+        /// substitute arbitrary accounts (e.g. redirect a transfer recipient).
+        target_account_ids: Vec<[u8; 32]>,
         /// PDA seeds for authorization in the chained call
         pda_seeds: Vec<[u8; 32]>,
         /// Which target account indices (0-based) get `is_authorized = true`
@@ -159,6 +163,10 @@ pub struct Proposal {
     pub target_instruction_data: Vec<u32>,
     /// Expected number of target accounts at execute time
     pub target_account_count: u8,
+    /// Account IDs of the external target accounts, committed at proposal time.
+    /// Execute verifies the supplied accounts against this list so an executor
+    /// cannot substitute arbitrary accounts for the ones members approved.
+    pub target_account_ids: Vec<[u8; 32]>,
     /// PDA seeds for the chained call (multisig proves ownership)
     pub pda_seeds: Vec<[u8; 32]>,
     /// Which target account indices (0-based) get `is_authorized = true`
@@ -183,6 +191,7 @@ impl Proposal {
         target_program_id: ProgramId,
         target_instruction_data: Vec<u32>,
         target_account_count: u8,
+        target_account_ids: Vec<[u8; 32]>,
         pda_seeds: Vec<[u8; 32]>,
         authorized_indices: Vec<u8>,
     ) -> Self {
@@ -193,6 +202,7 @@ impl Proposal {
             target_program_id,
             target_instruction_data,
             target_account_count,
+            target_account_ids,
             pda_seeds,
             authorized_indices,
             approved: vec![proposer],
@@ -216,6 +226,7 @@ impl Proposal {
             target_program_id: [0u32; 8],
             target_instruction_data: vec![],
             target_account_count: 0,
+            target_account_ids: vec![],
             pda_seeds: vec![],
             authorized_indices: vec![],
             approved: vec![proposer],

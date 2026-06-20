@@ -274,6 +274,7 @@ async fn test_multisig_token_transfer() {
             target_program_id: token_program_id,
             target_instruction_data: vault_init_instruction_data,
             target_account_count: 2,   // def_id + vault_id
+            target_account_ids: vec![*def_id.value(), *vault_id.value()], // bound at propose time (#40)
             pda_seeds: vec![vault_seed],
             authorized_indices: vec![1], // vault at index 1
             create_key,
@@ -372,6 +373,7 @@ async fn test_multisig_token_transfer() {
             target_program_id: token_program_id,
             target_instruction_data: target_instruction_data.clone(),
             target_account_count: 2,     // vault (index 0) + recipient (index 1)
+            target_account_ids: vec![*vault_id.value(), *recipient_id.value()], // bound at propose time (#40)
             pda_seeds: vec![vault_seed], // vault is PDA of multisig
             authorized_indices: vec![0], // vault (sender) at index 0 must be authorized
             create_key,
