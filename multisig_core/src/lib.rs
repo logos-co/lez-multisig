@@ -13,6 +13,7 @@
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use nssa_core::program::ProgramId;
+use spel_framework::account_type;
 
 use serde::{Deserialize, Serialize};
 
@@ -147,6 +148,7 @@ pub enum ProposalStatus {
 
 /// A proposal stored in its own PDA account.
 /// PDA derived from: proposal_pda_seed(create_key, proposal_index)
+#[account_type]
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
 pub struct Proposal {
     /// Unique index (matches MultisigState.transaction_index at creation time)
@@ -272,6 +274,7 @@ impl Proposal {
 // Multisig state (persisted in the multisig state PDA)
 // ---------------------------------------------------------------------------
 
+#[account_type]
 #[derive(Debug, Clone, Default, BorshSerialize, BorshDeserialize)]
 pub struct MultisigState {
     /// Unique key used to derive this multisig's PDA
