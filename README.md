@@ -24,7 +24,7 @@ CreateMultisig → Propose → Approve (×M) → Execute → ChainedCall to targ
 |---|---|---|
 | LEZ testnet (v0.2.4) | `2ced3d301a4d1cd5db6cad9c428b9f3463155073f8bacf73179c6ea6536de4c7` | tx `61a7abe2cfeddeae3cd54f23317f50e984eb331f420d013210e7eabcc896faa0`, block 23405 |
 
-The ImageID is reproducible. With the RISC Zero Rust toolchain 1.91.1 (`rzup install rust 1.91.1`), `cargo risczero build --manifest-path methods/guest/Cargo.toml` builds in the `risczero/risc0-guest-builder:r0.1.91.1` image, which is what CI does. The same guest bytes give the same id, and so the same PDAs. A different toolchain gives a different id.
+The ImageID is reproducible: `make build`, or `RISC0_DOCKER_CONTAINER_TAG=r0.1.91.1 cargo risczero build --manifest-path methods/guest/Cargo.toml`, builds in the `risczero/risc0-guest-builder:r0.1.91.1` image, as CI does. The same guest bytes give the same id, and so the same PDAs. risc0-build's own default image (`r0.1.88.0`) is too old for this dependency tree.
 
 **Key design:** The multisig never executes actions directly. It delegates via LEZ `ChainedCall` — the proposal stores a serialized instruction (encoded from any program's IDL), which is delivered to the target program on execute. This makes multisig governance **composable with any LEZ program**.
 
@@ -73,7 +73,7 @@ Members must use **fresh keypairs** (never-used accounts with nonce=0) for each 
 
 ```bash
 # Build the zkVM guest — requires Docker, ~15-20 min on first run
-cargo risczero build --manifest-path methods/guest/Cargo.toml
+RISC0_DOCKER_CONTAINER_TAG=r0.1.91.1 cargo risczero build --manifest-path methods/guest/Cargo.toml   # or: make build
 
 # Verify
 ls target/riscv32im-risc0-zkvm-elf/docker/multisig.bin

@@ -185,7 +185,7 @@ jobs:
             rzup install r0vm ${{ env.RISC0_VERSION }} && break
             sleep 15
           done
-          rzup install rust 1.91.1  # selects risczero/risc0-guest-builder:r0.1.91.1, the image the deployed ImageID was built in
+          rzup install rust 1.91.1  # match the guest builder image (RISC0_DOCKER_CONTAINER_TAG below)
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -222,6 +222,11 @@ jobs:
 
       - name: Build guest binary
         if: steps.cache-guest.outputs.cache-hit != 'true'
+        env:
+          # risc0-build 3.0.5 defaults to r0.1.88.0, whose rustc 1.88 is too old for the
+          # LEZ v0.2.4 tree (ruint needs 1.90). r0.1.91.1 is what LEZ v0.2.4 pins, and the
+          # image the testnet ImageID was built in.
+          RISC0_DOCKER_CONTAINER_TAG: r0.1.91.1
         run: cargo risczero build --manifest-path methods/guest/Cargo.toml
 
       - name: Clone LSSA
