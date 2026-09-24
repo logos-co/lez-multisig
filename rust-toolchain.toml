@@ -1,0 +1,4 @@
+# Kept in sync with logos-execution-zone v0.2.4 and SPEL v0.7.0 (both pin 1.94.0).
+[toolchain]
+channel = "1.94.0"
+profile = "default"

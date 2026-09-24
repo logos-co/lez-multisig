@@ -14,6 +14,7 @@ pub fn handle(
     target_program_id: &ProgramId,
     target_instruction_data: &InstructionData,
     target_account_count: u8,
+    target_account_ids: &[[u8; 32]],
     pda_seeds: &[[u8; 32]],
     authorized_indices: &[u8],
 ) -> (Vec<Account>, Vec<ChainedCall>) {
@@ -39,6 +40,16 @@ pub fn handle(
     let proposer_id = *proposer_account.account_id.value();
     assert!(state.is_member(&proposer_id), "Proposer is not a multisig member");
 
+    // The committed account-id list must cover exactly the declared targets, so
+    // execute can bind every supplied account back to one the members approved.
+    assert_eq!(
+        target_account_ids.len(),
+        target_account_count as usize,
+        "target_account_ids length ({}) must equal target_account_count ({})",
+        target_account_ids.len(),
+        target_account_count
+    );
+
     let proposal_index = state.next_proposal_index();
 
     // Create the proposal
@@ -49,6 +60,7 @@ pub fn handle(
         target_program_id.clone(),
         target_instruction_data.clone(),
         target_account_count,
+        target_account_ids.to_vec(),
         pda_seeds.to_vec(),
         authorized_indices.to_vec(),
     );
@@ -108,6 +120,7 @@ mod tests {
             &program_id,
             &vec![0u32],
             1,
+            &[[30u8; 32]],
             &[],
             &[],
         );
@@ -144,7 +157,7 @@ mod tests {
         ];
 
         let program_id: ProgramId = [42u32; 8];
-        handle(&accounts, &program_id, &vec![0u32], 1, &[], &[]);
+        handle(&accounts, &program_id, &vec![0u32], 1, &[[30u8; 32]], &[], &[]);
     }
 
     #[test]
@@ -160,6 +173,6 @@ mod tests {
         ];
 
         let program_id: ProgramId = [42u32; 8];
-        handle(&accounts, &program_id, &vec![0u32], 1, &[], &[]);
+        handle(&accounts, &program_id, &vec![0u32], 1, &[[30u8; 32]], &[], &[]);
     }
 }

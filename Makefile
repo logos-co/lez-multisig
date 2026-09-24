@@ -19,7 +19,7 @@ PROGRAMS_DIR := target/riscv32im-risc0-zkvm-elf/docker
 # Token program binary — set this to point to your logos-execution-zone build
 # e.g. LSSA_DIR=../logos-execution-zone
 LSSA_DIR ?=
-TOKEN_BIN := $(LSSA_DIR)/artifacts/program_methods/token.bin
+TOKEN_BIN := $(LSSA_DIR)/artifacts/lez/programs/token.bin
 
 MULTISIG_BIN := $(PROGRAMS_DIR)/multisig.bin
 
@@ -110,8 +110,12 @@ help: ## Show this help
 	@echo ""
 	@echo "Required env: LSSA_DIR=<path to logos-execution-zone repo>"
 
+# The guest builder image. risc0-build 3.0.5 defaults to r0.1.88.0, which is too old for
+# the LEZ v0.2.4 tree; r0.1.91.1 is what LEZ v0.2.4 pins and what the testnet ImageID used.
+RISC0_DOCKER_CONTAINER_TAG ?= r0.1.91.1
+
 build: ## Build the multisig guest binary
-	cargo risczero build --manifest-path methods/guest/Cargo.toml
+	RISC0_DOCKER_CONTAINER_TAG=$(RISC0_DOCKER_CONTAINER_TAG) cargo risczero build --manifest-path methods/guest/Cargo.toml
 	@echo ""
 	@echo "✅ Guest binary built: $(MULTISIG_BIN)"
 	@ls -la $(MULTISIG_BIN)

@@ -121,6 +121,19 @@ pub fn handle(
             target_accounts.len()
         );
 
+        // Bind every supplied account to the one committed at proposal time.
+        // Only PDA accounts are otherwise constrained (via pda_seeds); without
+        // this check the executor could substitute arbitrary external accounts
+        // — e.g. redirect an approved token transfer to a different recipient.
+        for (i, target) in target_accounts.iter().enumerate() {
+            assert_eq!(
+                *target.account_id.value(),
+                proposal.target_account_ids[i],
+                "Target account {} does not match the approved proposal",
+                i
+            );
+        }
+
         let target_program_id = proposal.target_program_id.clone();
         let target_instruction_data = proposal.target_instruction_data.clone();
         let pda_seeds: Vec<PdaSeed> = proposal.pda_seeds.iter().map(|s| PdaSeed::new(*s)).collect();
@@ -191,7 +204,11 @@ mod tests {
         borsh::to_vec(&MultisigState::new([0u8; 32], threshold, members)).unwrap()
     }
 
-    fn make_proposal_with_approvals(approvals: Vec<[u8; 32]>, target_account_count: u8) -> Vec<u8> {
+    fn make_proposal_with_approvals(
+        approvals: Vec<[u8; 32]>,
+        target_account_count: u8,
+        target_account_ids: Vec<[u8; 32]>,
+    ) -> Vec<u8> {
         let fake_program_id: ProgramId = [42u32; 8];
         let mut proposal = Proposal::new(
             1,
@@ -200,6 +217,7 @@ mod tests {
             fake_program_id,
             vec![0u32],
             target_account_count,
+            target_account_ids,
             vec![],
             vec![0u8], // first target account is authorized
         );
@@ -214,7 +232,7 @@ mod tests {
         let members = vec![[1u8; 32], [2u8; 32], [3u8; 32]];
         let state_data = make_state(2, members);
         // 2 approvals (member 1 auto, member 2 added)
-        let proposal_data = make_proposal_with_approvals(vec![[1u8; 32], [2u8; 32]], 1);
+        let proposal_data = make_proposal_with_approvals(vec![[1u8; 32], [2u8; 32]], 1, vec![[30u8; 32]]);
 
         let accounts = vec![
             make_account(&[10u8; 32], state_data, false),   // multisig state
@@ -239,13 +257,35 @@ mod tests {
         assert!(chained[0].pre_states[0].is_authorized);
     }
 
+    // Security regression for #40: a fully-approved proposal that targets
+    // recipient X must NOT execute when the executor substitutes recipient Y.
+    // The proposal commits target_account_ids = [X]; execute must reject Y.
+    #[test]
+    #[should_panic(expected = "does not match the approved proposal")]
+    fn test_execute_rejects_substituted_target_account() {
+        let members = vec![[1u8; 32], [2u8; 32], [3u8; 32]];
+        let state_data = make_state(2, members);
+        // Approved to send to recipient X = [30; 32]
+        let proposal_data =
+            make_proposal_with_approvals(vec![[1u8; 32], [2u8; 32]], 1, vec![[30u8; 32]]);
+
+        let accounts = vec![
+            make_account(&[10u8; 32], state_data, false),    // multisig state
+            make_account(&[1u8; 32], vec![], true),            // executor (member)
+            make_account(&[20u8; 32], proposal_data, false),   // proposal PDA
+            make_account(&[99u8; 32], vec![], false),          // ATTACK: Y, not approved X
+        ];
+
+        handle(&accounts, 1);
+    }
+
     #[test]
     #[should_panic(expected = "enough approvals")]
     fn test_execute_below_threshold_fails() {
         let members = vec![[1u8; 32], [2u8; 32], [3u8; 32]];
         let state_data = make_state(2, members);
         // Only 1 approval (proposer only)
-        let proposal_data = make_proposal_with_approvals(vec![[1u8; 32]], 1);
+        let proposal_data = make_proposal_with_approvals(vec![[1u8; 32]], 1, vec![[30u8; 32]]);
 
         let accounts = vec![
             make_account(&[10u8; 32], state_data, false),
@@ -262,7 +302,7 @@ mod tests {
     fn test_execute_wrong_account_count_fails() {
         let members = vec![[1u8; 32], [2u8; 32]];
         let state_data = make_state(2, members);
-        let proposal_data = make_proposal_with_approvals(vec![[1u8; 32], [2u8; 32]], 1);
+        let proposal_data = make_proposal_with_approvals(vec![[1u8; 32], [2u8; 32]], 1, vec![[30u8; 32]]);
 
         // Missing the target account
         let accounts = vec![
@@ -280,7 +320,7 @@ mod tests {
     fn test_execute_non_member_fails() {
         let members = vec![[1u8; 32], [2u8; 32]];
         let state_data = make_state(2, members);
-        let proposal_data = make_proposal_with_approvals(vec![[1u8; 32], [2u8; 32]], 1);
+        let proposal_data = make_proposal_with_approvals(vec![[1u8; 32], [2u8; 32]], 1, vec![[30u8; 32]]);
 
         let accounts = vec![
             make_account(&[10u8; 32], state_data, false),

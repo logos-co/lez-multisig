@@ -16,6 +16,16 @@ CreateMultisig → Propose → Approve (×M) → Execute → ChainedCall to targ
 4. **Execute** — once M approvals collected, emits a `ChainedCall` to the target program
 5. **Reject** — members can reject; if rejections ≥ (N - M + 1), the proposal is dead
 
+**Targets LEZ v0.2.4 / SPEL v0.7.0**, the line the public testnet (`https://testnet.lez.logos.co`) runs. A proposal commits the ids of the accounts its call will touch, and `Execute` refuses any other accounts (#40).
+
+### Deployments
+
+| Network | ImageID (program id) | Deployed |
+|---|---|---|
+| LEZ testnet (v0.2.4) | `2ced3d301a4d1cd5db6cad9c428b9f3463155073f8bacf73179c6ea6536de4c7` | tx `61a7abe2cfeddeae3cd54f23317f50e984eb331f420d013210e7eabcc896faa0`, block 23405 |
+
+The ImageID is reproducible: `make build`, or `RISC0_DOCKER_CONTAINER_TAG=r0.1.91.1 cargo risczero build --manifest-path methods/guest/Cargo.toml`, builds in the `risczero/risc0-guest-builder:r0.1.91.1` image, as CI does. The same guest bytes give the same id, and so the same PDAs. risc0-build's own default image (`r0.1.88.0`) is too old for this dependency tree.
+
 **Key design:** The multisig never executes actions directly. It delegates via LEZ `ChainedCall` — the proposal stores a serialized instruction (encoded from any program's IDL), which is delivered to the target program on execute. This makes multisig governance **composable with any LEZ program**.
 
 ## Project Structure
@@ -49,10 +59,11 @@ lez-multisig-framework/
 
 ### Prerequisites
 
-- Rust nightly (edition 2024)
+- Rust 1.94.0 (pinned in `rust-toolchain.toml`, same as LEZ v0.2.4 and SPEL v0.7.0)
 - [Risc0 toolchain](https://dev.risczero.com/api/zkvm/install): `curl -L https://risczero.com/install | bash && rzup install`
 - Docker (for reproducible guest builds)
-- Clone of [logos-execution-zone](https://github.com/logos-blockchain/logos-execution-zone) (for sequencer + wallet) and built [lez-programs](https://github.com/logos-blockchain/lez-programs) (token binary at `target/riscv32im-risc0-zkvm-elf/docker/token.bin`)
+- Clone of [logos-execution-zone](https://github.com/logos-blockchain/logos-execution-zone) at `v0.2.4` (sequencer + wallet; the token program binary ships at `artifacts/lez/programs/token.bin`)
+- Host libraries: `libpcsclite-dev` (the v0.2.4 wallet links Keycard support). The sequencer also needs `libclang` for RocksDB's bindgen, and `r0vm` 3.0.5 on `PATH` to run genesis
 
 ### Important: Member Accounts
 
@@ -62,7 +73,7 @@ Members must use **fresh keypairs** (never-used accounts with nonce=0) for each 
 
 ```bash
 # Build the zkVM guest — requires Docker, ~15-20 min on first run
-cargo risczero build --manifest-path methods/guest/Cargo.toml
+RISC0_DOCKER_CONTAINER_TAG=r0.1.91.1 cargo risczero build --manifest-path methods/guest/Cargo.toml   # or: make build
 
 # Verify
 ls target/riscv32im-risc0-zkvm-elf/docker/multisig.bin
@@ -72,8 +83,8 @@ ls target/riscv32im-risc0-zkvm-elf/docker/multisig.bin
 
 ```bash
 # Regenerate from Rust source whenever instruction types change
-cargo run -p idl-gen
-# Output: lez-multisig-ffi/src/multisig_idl.json
+cargo run -p lez-multisig-idl-gen > lez-multisig-ffi/src/multisig_idl.json
+# or: make generate   (IDL + FFI client via spel-client-gen)
 ```
 
 ### 3. Run unit tests
@@ -87,9 +98,10 @@ cargo test -p multisig_core -p multisig_program
 The demo script runs a complete flow against a local sequencer: deploy → register → create multisig → propose member additions → execute → token governance via ChainedCall.
 
 ```bash
-# Terminal 1: start sequencer (from lssa repo)
-RUST_LOG=info cargo run --features standalone -p sequencer_runner -- \
-  sequencer_runner/configs/debug
+# Terminal 1: start a local sequencer (logos-execution-zone v0.2.4)
+cd logos-execution-zone/lez/sequencer/service
+RUST_LOG=info cargo run --release --features standalone -p sequencer_service -- \
+  configs/debug/sequencer_config.json
 
 # Terminal 2: run demo (set LSSA_DIR and REGISTRY_DIR first)
 export LSSA_DIR=/path/to/lssa
@@ -102,9 +114,14 @@ See [scripts/DEMO-RUNBOOK.md](scripts/DEMO-RUNBOOK.md) for a manual step-by-step
 ### 5. Run e2e tests
 
 ```bash
-# Requires running sequencer + token binary
-export TOKEN_PROGRAM=/path/to/lez-programs/target/riscv32im-risc0-zkvm-elf/docker/token.bin
-cargo test -p lez-multisig-e2e -- --nocapture
+# Requires a running sequencer (above) + the token binary
+export TOKEN_PROGRAM=/path/to/logos-execution-zone/artifacts/lez/programs/token.bin
+export MULTISIG_PROGRAM=$PWD/target/riscv32im-risc0-zkvm-elf/docker/multisig.bin
+cargo test -p lez-multisig-e2e -- --nocapture --test-threads=1
+
+# Against the public testnet, allow for its block time:
+SEQUENCER_URL=https://testnet.lez.logos.co BLOCK_WAIT_SECS=60 \
+  cargo test -p lez-multisig-e2e -- --nocapture --test-threads=1
 ```
 
 ## On-Chain State

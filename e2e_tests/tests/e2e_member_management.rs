@@ -18,9 +18,13 @@ use nssa::{
 use multisig_core::{Instruction, MultisigState, Proposal, ProposalStatus};
 use lez_multisig_ffi::{compute_multisig_state_pda, compute_proposal_pda};
 use sequencer_service_rpc::{SequencerClient, SequencerClientBuilder, RpcClient as _};
-use common::transaction::NSSATransaction;
+use common::transaction::LeeTransaction;
 
-const BLOCK_WAIT_SECS: u64 = 15;
+/// Seconds per block on the target sequencer: 15 for the local standalone config
+/// (block_create_timeout), longer on a public network. Override with BLOCK_WAIT_SECS.
+fn block_wait_secs() -> u64 {
+    std::env::var("BLOCK_WAIT_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(15)
+}
 
 fn account_id_from_key(key: &PrivateKey) -> AccountId {
     let pk = PublicKey::new_from_private_key(key);
@@ -34,11 +38,11 @@ fn sequencer_client() -> SequencerClient {
 }
 
 async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
-    let response = client.send_transaction(NSSATransaction::Public(tx)).await.expect("Failed to submit tx");
+    let response = client.send_transaction(LeeTransaction::Public(tx)).await.expect("Failed to submit tx");
     let tx_hash = response;
     println!("  tx_hash: {}", hex::encode(tx_hash.0));
 
-    let max_wait = Duration::from_secs(BLOCK_WAIT_SECS * 3);
+    let max_wait = Duration::from_secs(block_wait_secs() * 3);
     let poll_interval = Duration::from_secs(3);
     let start = std::time::Instant::now();
 
@@ -61,7 +65,7 @@ async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
 /// Submit a tx that we expect to fail (not get included).
 /// Returns true if it was correctly rejected/not included.
 async fn submit_tx_expect_failure(client: &SequencerClient, tx: PublicTransaction) -> bool {
-    match client.send_transaction(NSSATransaction::Public(tx)).await {
+    match client.send_transaction(LeeTransaction::Public(tx)).await {
         Err(_) => {
             println!("  ✅ Transaction rejected at submission (expected)");
             return true;
@@ -70,7 +74,7 @@ async fn submit_tx_expect_failure(client: &SequencerClient, tx: PublicTransactio
             let tx_hash = response;
             println!("  tx_hash: {} (expecting non-inclusion)", hex::encode(tx_hash.0));
             // Wait a bit and check it wasn't included
-            tokio::time::sleep(Duration::from_secs(BLOCK_WAIT_SECS * 2)).await;
+            tokio::time::sleep(Duration::from_secs(block_wait_secs() * 2)).await;
             match client.get_transaction(tx_hash.clone()).await {
                 Ok(resp) if resp.is_some() => {
                     println!("  ❌ Transaction was unexpectedly included!");
@@ -104,7 +108,7 @@ async fn get_proposal(client: &SequencerClient, proposal_id: AccountId) -> Propo
 }
 
 fn deploy_program(bytecode: Vec<u8>) -> (ProgramDeploymentTransaction, nssa::ProgramId) {
-    let program = Program::new(bytecode.clone()).expect("Invalid program");
+    let program = Program::new(bytecode.clone().into()).expect("Invalid program");
     let program_id = program.id();
     let msg = nssa::program_deployment_transaction::Message::new(bytecode);
     (ProgramDeploymentTransaction::new(msg), program_id)
@@ -183,10 +187,10 @@ async fn test_member_management() {
         .unwrap_or_else(|_| panic!("Cannot read multisig binary at '{}'", multisig_path));
     let (deploy_tx, program_id) = deploy_program(multisig_bytecode);
 
-    match client.send_transaction(NSSATransaction::ProgramDeployment(deploy_tx)).await {
+    match client.send_transaction(LeeTransaction::ProgramDeployment(deploy_tx)).await {
         Ok(r) => {
             println!("  Deployed: {}", hex::encode(r.0));
-            tokio::time::sleep(Duration::from_secs(BLOCK_WAIT_SECS)).await;
+            tokio::time::sleep(Duration::from_secs(block_wait_secs())).await;
         }
         Err(e) => println!("  Deploy skipped (already deployed): {}", e),
     }

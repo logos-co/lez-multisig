@@ -17,10 +17,15 @@
 //!     (vault is authorized via PDA mechanism, recipient already exists — no new claim)
 //! 11. Verify tokens arrived at recipient
 //!
+//! Between 9 and 10, an executor who substitutes the recipient is refused on chain: the
+//! proposal committed its target accounts at propose time (logos-co/lez-multisig#40).
+//!
 //! Prerequisites:
 //! - Running sequencer at SEQUENCER_URL (default http://127.0.0.1:3040)
+//! - BLOCK_WAIT_SECS: seconds per block (default 15, the local standalone config; ~60 for
+//!   the public testnet, SEQUENCER_URL=https://testnet.lez.logos.co)
 //! - MULTISIG_PROGRAM env var pointing to compiled multisig guest binary (default: target/riscv32im-risc0-zkvm-elf/docker/multisig.bin)
-//! - TOKEN_PROGRAM env var pointing to token guest binary (default: $HOME/lssa/artifacts/program_methods/token.bin)
+//! - TOKEN_PROGRAM env var pointing to token guest binary (default: $HOME/logos-execution-zone/artifacts/lez/programs/token.bin — LEZ v0.2.4)
 
 use std::time::Duration;
 
@@ -34,10 +39,14 @@ use lez_multisig_ffi::{
     compute_multisig_state_pda, compute_proposal_pda, compute_vault_pda, vault_pda_seed_bytes,
 };
 use sequencer_service_rpc::{SequencerClient, SequencerClientBuilder, RpcClient as _};
-use common::transaction::NSSATransaction;
+use common::transaction::LeeTransaction;
 use token_core::{Instruction as TokenInstruction, TokenHolding};
 
-const BLOCK_WAIT_SECS: u64 = 15;
+/// Seconds per block on the target sequencer: 15 for the local standalone config
+/// (block_create_timeout), longer on a public network. Override with BLOCK_WAIT_SECS.
+fn block_wait_secs() -> u64 {
+    std::env::var("BLOCK_WAIT_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(15)
+}
 
 fn account_id_from_key(key: &PrivateKey) -> AccountId {
     let pk = PublicKey::new_from_private_key(key);
@@ -51,12 +60,12 @@ fn sequencer_client() -> SequencerClient {
 }
 
 async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
-    let response = client.send_transaction(NSSATransaction::Public(tx)).await.expect("Failed to submit tx");
+    let response = client.send_transaction(LeeTransaction::Public(tx)).await.expect("Failed to submit tx");
     let tx_hash = response;
     println!("  tx_hash: {}", hex::encode(tx_hash.0));
 
     // Wait for inclusion: poll for up to 2 block periods
-    let max_wait = Duration::from_secs(BLOCK_WAIT_SECS * 3);
+    let max_wait = Duration::from_secs(block_wait_secs() * 3);
     let poll_interval = Duration::from_secs(3);
     let start = std::time::Instant::now();
 
@@ -78,6 +87,17 @@ async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
             }
         }
     }
+}
+
+/// Submit a transaction the program must refuse: it is accepted into the mempool but never
+/// included (the sequencer drops a failing transaction at block production).
+async fn submit_tx_expect_refused(client: &SequencerClient, tx: PublicTransaction) {
+    let tx_hash = client.send_transaction(LeeTransaction::Public(tx)).await.expect("Failed to submit tx");
+    println!("  tx_hash: {} (expected to be refused)", hex::encode(tx_hash.0));
+    tokio::time::sleep(Duration::from_secs(block_wait_secs() * 2)).await;
+    let included = client.get_transaction(tx_hash.clone()).await.ok().flatten().is_some();
+    assert!(!included, "❌ Transaction {} was included, but the program should have refused it", tx_hash);
+    println!("  ✅ refused — never included");
 }
 
 async fn get_nonce(client: &SequencerClient, account_id: AccountId) -> u128 {
@@ -135,7 +155,7 @@ async fn get_proposal(client: &SequencerClient, proposal_id: AccountId) -> Propo
 }
 
 fn deploy_program(bytecode: Vec<u8>) -> (ProgramDeploymentTransaction, nssa::ProgramId) {
-    let program = Program::new(bytecode.clone()).expect("Invalid program");
+    let program = Program::new(bytecode.clone().into()).expect("Invalid program");
     let program_id = program.id();
     let msg = nssa::program_deployment_transaction::Message::new(bytecode);
     (ProgramDeploymentTransaction::new(msg), program_id)
@@ -151,7 +171,7 @@ async fn test_multisig_token_transfer() {
     let token_path = std::env::var("TOKEN_PROGRAM")
         .unwrap_or_else(|_| {
             let home = std::env::var("HOME").expect("HOME env var not set");
-            format!("{}/lssa/artifacts/program_methods/token.bin", home)
+            format!("{}/logos-execution-zone/artifacts/lez/programs/token.bin", home)
         });
     let token_bytecode = std::fs::read(&token_path)
         .unwrap_or_else(|_| panic!("Cannot read token binary at '{}'", token_path));
@@ -168,10 +188,10 @@ async fn test_multisig_token_transfer() {
 
     // Deploy both (skip if already deployed)
     for (name, tx) in [("token", token_deploy_tx), ("multisig", multisig_deploy_tx)] {
-        match client.send_transaction(NSSATransaction::ProgramDeployment(tx)).await {
+        match client.send_transaction(LeeTransaction::ProgramDeployment(tx)).await {
             Ok(r) => {
                 println!("  {} deployed: {}", name, hex::encode(r.0));
-                tokio::time::sleep(Duration::from_secs(BLOCK_WAIT_SECS)).await;
+                tokio::time::sleep(Duration::from_secs(block_wait_secs())).await;
             }
             Err(e) => println!("  {} deploy skipped: {}", name, e),
         }
@@ -274,6 +294,7 @@ async fn test_multisig_token_transfer() {
             target_program_id: token_program_id,
             target_instruction_data: vault_init_instruction_data,
             target_account_count: 2,   // def_id + vault_id
+            target_account_ids: vec![*def_id.value(), *vault_id.value()], // bound at propose time (#40)
             pda_seeds: vec![vault_seed],
             authorized_indices: vec![1], // vault at index 1
             create_key,
@@ -372,6 +393,7 @@ async fn test_multisig_token_transfer() {
             target_program_id: token_program_id,
             target_instruction_data: target_instruction_data.clone(),
             target_account_count: 2,     // vault (index 0) + recipient (index 1)
+            target_account_ids: vec![*vault_id.value(), *recipient_id.value()], // bound at propose time (#40)
             pda_seeds: vec![vault_seed], // vault is PDA of multisig
             authorized_indices: vec![0], // vault (sender) at index 0 must be authorized
             create_key,
@@ -402,6 +424,34 @@ async fn test_multisig_token_transfer() {
     let proposal = get_proposal(&client, proposal_id).await;
     assert_eq!(proposal.approved.len(), 2, "Should have 2 approvals");
     println!("  ✅ 2/2 approvals — ready to execute!");
+
+    // ── Execute with a substituted recipient: refused (#40) ─────────────
+    // The proposal committed [vault, recipient]; an executor who names another account
+    // in the recipient slot must be refused, or an approved transfer could be redirected.
+    println!("\n═══ STEP 7b: Execute with a substituted recipient — refused ═══");
+    let thief_key = PrivateKey::new_os_random();
+    let thief_id = account_id_from_key(&thief_key);
+    let msg = Message::try_new(
+        token_program_id,
+        vec![def_id, thief_id],
+        vec![nssa_core::account::Nonce(0)],
+        TokenInstruction::InitializeAccount,
+    ).unwrap();
+    let ws = WitnessSet::for_message(&msg, &[&thief_key]);
+    submit_tx(&client, PublicTransaction::new(msg, ws)).await;
+    let nonce_m1 = get_nonce(&client, m1).await;
+    let msg = Message::try_new(
+        multisig_program_id,
+        vec![multisig_state_id, m1, proposal_id, vault_id, thief_id],
+        vec![nssa_core::account::Nonce(nonce_m1)],
+        Instruction::Execute { create_key, proposal_index: 2 },
+    ).unwrap();
+    let ws = WitnessSet::for_message(&msg, &[&key1]);
+    submit_tx_expect_refused(&client, PublicTransaction::new(msg, ws)).await;
+    assert_eq!(get_balance(&client, thief_id).await, Some(0), "the substitute received nothing");
+    assert_eq!(get_balance(&client, vault_id).await, Some(500), "the vault is untouched");
+    assert_eq!(get_proposal(&client, proposal_id).await.status, ProposalStatus::Active,
+               "the proposal is still active");
 
     // ── Execute (ChainedCall to token program) ──────────────────────────
     // In the ChainedCall: vault is authorized_pdas (vault_id = PDA of multisig).
@@ -442,6 +492,7 @@ async fn test_multisig_token_transfer() {
     println!("   - Create multisig ✅");
     println!("   - Fund vault PDA ✅");
     println!("   - Propose transfer via ChainedCall ✅");
+    println!("   - Substituted recipient refused ✅");
     println!("   - Approve + Execute ✅");
     println!("   - Token balances verified ✅");
 }

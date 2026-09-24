@@ -58,6 +58,10 @@ char* lez_multisig_create(const char* args_json);
  *   "target_program_id":       "hex64",
  *   "target_instruction_data": "hex (encoded bytes)",
  *   "target_account_count":    3,
+ *   "target_account_ids":      ["hex64", ...],  (the approved transfer targets;
+ *                                                length MUST equal target_account_count.
+ *                                                Bound at propose time so the executor
+ *                                                cannot substitute the destination — issue #40)
  *   "pda_seeds":               ["hex64", ...],
  *   "authorized_indices":      [0, 1]
  * }
@@ -130,6 +134,7 @@ char* lez_multisig_execute(const char* args_json);
  *       "proposer": "hex64",
  *       "target_program_id": "hex64",
  *       "target_account_count": 3,
+ *       "target_account_ids": ["hex64", ...],  (approved destinations — issue #40)
  *       "approved_count": 2,
  *       "rejected_count": 0,
  *       "status": "Active|Approved|Rejected|Executed",

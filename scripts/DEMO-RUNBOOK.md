@@ -286,11 +286,18 @@ PROP_TOKEN="<base58>"
 # variant=0 (Transfer), u128(200) = 5 words: [0, 200, 0, 0, 0]
 TARGET_IX_DATA="0,200,0,0,0"
 
+# #40: bind the approved destinations INTO the proposal so the executor cannot
+# substitute them. Same order the executor passes in --target-accounts-account
+# below: [vault, recipient]. Encoding confirmed via `propose --help`:
+#   --target-account-ids  Vec<[u8;32]>  — format: HEX64,...  (comma-separated, like --pda-seeds)
+TARGET_IDS=$(python3 -c "import base58; print(','.join(base58.b58decode(a).hex() for a in ['$VAULT_PDA','$RECIPIENT']))")
+
 $MULTISIG --idl $IDL --program $MULTISIG_BIN \
   propose \
     --target-program-id       $TOKEN_PROGRAM_ID \
     --target-instruction-data $TARGET_IX_DATA \
     --target-account-count    2 \
+    --target-account-ids      $TARGET_IDS \
     --pda-seeds               $VAULT_SEED \
     --authorized-indices      0 \
     --multisig-state-account  $MULTISIG_STATE \

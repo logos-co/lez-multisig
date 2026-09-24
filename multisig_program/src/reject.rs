@@ -92,6 +92,7 @@ mod tests {
             fake_program_id,
             vec![0u32],
             1,
+            vec![[0u8; 32]],
             vec![],
             vec![],
         );
