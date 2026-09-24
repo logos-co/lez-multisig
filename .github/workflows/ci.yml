@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install system libraries  # the LEZ v0.2.4 wallet links pcsc (Keycard)
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:

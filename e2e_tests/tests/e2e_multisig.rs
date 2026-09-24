@@ -22,6 +22,8 @@
 //!
 //! Prerequisites:
 //! - Running sequencer at SEQUENCER_URL (default http://127.0.0.1:3040)
+//! - BLOCK_WAIT_SECS: seconds per block (default 15, the local standalone config; ~60 for
+//!   the public testnet, SEQUENCER_URL=https://testnet.lez.logos.co)
 //! - MULTISIG_PROGRAM env var pointing to compiled multisig guest binary (default: target/riscv32im-risc0-zkvm-elf/docker/multisig.bin)
 //! - TOKEN_PROGRAM env var pointing to token guest binary (default: $HOME/logos-execution-zone/artifacts/lez/programs/token.bin — LEZ v0.2.4)
 
@@ -40,7 +42,11 @@ use sequencer_service_rpc::{SequencerClient, SequencerClientBuilder, RpcClient a
 use common::transaction::LeeTransaction;
 use token_core::{Instruction as TokenInstruction, TokenHolding};
 
-const BLOCK_WAIT_SECS: u64 = 15;
+/// Seconds per block on the target sequencer: 15 for the local standalone config
+/// (block_create_timeout), longer on a public network. Override with BLOCK_WAIT_SECS.
+fn block_wait_secs() -> u64 {
+    std::env::var("BLOCK_WAIT_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(15)
+}
 
 fn account_id_from_key(key: &PrivateKey) -> AccountId {
     let pk = PublicKey::new_from_private_key(key);
@@ -59,7 +65,7 @@ async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
     println!("  tx_hash: {}", hex::encode(tx_hash.0));
 
     // Wait for inclusion: poll for up to 2 block periods
-    let max_wait = Duration::from_secs(BLOCK_WAIT_SECS * 3);
+    let max_wait = Duration::from_secs(block_wait_secs() * 3);
     let poll_interval = Duration::from_secs(3);
     let start = std::time::Instant::now();
 
@@ -88,7 +94,7 @@ async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
 async fn submit_tx_expect_refused(client: &SequencerClient, tx: PublicTransaction) {
     let tx_hash = client.send_transaction(LeeTransaction::Public(tx)).await.expect("Failed to submit tx");
     println!("  tx_hash: {} (expected to be refused)", hex::encode(tx_hash.0));
-    tokio::time::sleep(Duration::from_secs(BLOCK_WAIT_SECS * 2)).await;
+    tokio::time::sleep(Duration::from_secs(block_wait_secs() * 2)).await;
     let included = client.get_transaction(tx_hash.clone()).await.ok().flatten().is_some();
     assert!(!included, "❌ Transaction {} was included, but the program should have refused it", tx_hash);
     println!("  ✅ refused — never included");
@@ -185,7 +191,7 @@ async fn test_multisig_token_transfer() {
         match client.send_transaction(LeeTransaction::ProgramDeployment(tx)).await {
             Ok(r) => {
                 println!("  {} deployed: {}", name, hex::encode(r.0));
-                tokio::time::sleep(Duration::from_secs(BLOCK_WAIT_SECS)).await;
+                tokio::time::sleep(Duration::from_secs(block_wait_secs())).await;
             }
             Err(e) => println!("  {} deploy skipped: {}", name, e),
         }

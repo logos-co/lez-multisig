@@ -19,7 +19,7 @@ PROGRAMS_DIR := target/riscv32im-risc0-zkvm-elf/docker
 # Token program binary — set this to point to your logos-execution-zone build
 # e.g. LSSA_DIR=../logos-execution-zone
 LSSA_DIR ?=
-TOKEN_BIN := $(LSSA_DIR)/artifacts/program_methods/token.bin
+TOKEN_BIN := $(LSSA_DIR)/artifacts/lez/programs/token.bin
 
 MULTISIG_BIN := $(PROGRAMS_DIR)/multisig.bin
 

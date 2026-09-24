@@ -6,12 +6,12 @@ on:
       spel_ref:
         description: 'SPEL branch, tag, commit SHA, or refs/pull/123/head for PRs'
         required: true
-        default: 'v0.3.0'
+        default: 'v0.7.0'
 
 env:
   CARGO_TERM_COLOR: always
   RISC0_VERSION: "3.0.5"
-  LSSA_REF: "v0.2.0-rc3"
+  LSSA_REF: "v0.2.4"
 
 jobs:
   unit-tests:
@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install system libraries  # the LEZ v0.2.4 wallet links pcsc (Keycard)
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
@@ -120,6 +122,8 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - name: Install system libraries  # the LEZ v0.2.4 wallet links pcsc (Keycard); the sequencer's RocksDB runs bindgen
+        run: sudo apt-get update && sudo apt-get install -y libpcsclite-dev libclang-dev
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Resolve SPEL ref to SHA
@@ -259,7 +263,7 @@ jobs:
         run: |
           cd /tmp/lssa
           rm -rf rocksdb
-          /tmp/lssa/target/release/sequencer_service sequencer/service/configs/debug/sequencer_config.json > /tmp/sequencer.log 2>&1 &
+          /tmp/lssa/target/release/sequencer_service lez/sequencer/service/configs/debug/sequencer_config.json > /tmp/sequencer.log 2>&1 &
           echo "Waiting for sequencer..."
           for i in $(seq 1 60); do
             CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3040 2>/dev/null || echo "000")
@@ -279,7 +283,7 @@ jobs:
       - name: Run e2e tests
         env:
           MULTISIG_PROGRAM: ${{ github.workspace }}/target/riscv32im-risc0-zkvm-elf/docker/multisig.bin
-          TOKEN_PROGRAM: /tmp/lssa/artifacts/program_methods/token.bin
+          TOKEN_PROGRAM: /tmp/lssa/artifacts/lez/programs/token.bin
           SEQUENCER_URL: http://127.0.0.1:3040
         run: cargo test -p lez-multisig-e2e -- --nocapture --test-threads=1
 

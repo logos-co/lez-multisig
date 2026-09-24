@@ -20,7 +20,11 @@ use lez_multisig_ffi::{compute_multisig_state_pda, compute_proposal_pda};
 use sequencer_service_rpc::{SequencerClient, SequencerClientBuilder, RpcClient as _};
 use common::transaction::LeeTransaction;
 
-const BLOCK_WAIT_SECS: u64 = 15;
+/// Seconds per block on the target sequencer: 15 for the local standalone config
+/// (block_create_timeout), longer on a public network. Override with BLOCK_WAIT_SECS.
+fn block_wait_secs() -> u64 {
+    std::env::var("BLOCK_WAIT_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(15)
+}
 
 fn account_id_from_key(key: &PrivateKey) -> AccountId {
     let pk = PublicKey::new_from_private_key(key);
@@ -38,7 +42,7 @@ async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
     let tx_hash = response;
     println!("  tx_hash: {}", hex::encode(tx_hash.0));
 
-    let max_wait = Duration::from_secs(BLOCK_WAIT_SECS * 3);
+    let max_wait = Duration::from_secs(block_wait_secs() * 3);
     let poll_interval = Duration::from_secs(3);
     let start = std::time::Instant::now();
 
@@ -70,7 +74,7 @@ async fn submit_tx_expect_failure(client: &SequencerClient, tx: PublicTransactio
             let tx_hash = response;
             println!("  tx_hash: {} (expecting non-inclusion)", hex::encode(tx_hash.0));
             // Wait a bit and check it wasn't included
-            tokio::time::sleep(Duration::from_secs(BLOCK_WAIT_SECS * 2)).await;
+            tokio::time::sleep(Duration::from_secs(block_wait_secs() * 2)).await;
             match client.get_transaction(tx_hash.clone()).await {
                 Ok(resp) if resp.is_some() => {
                     println!("  ❌ Transaction was unexpectedly included!");
@@ -186,7 +190,7 @@ async fn test_member_management() {
     match client.send_transaction(LeeTransaction::ProgramDeployment(deploy_tx)).await {
         Ok(r) => {
             println!("  Deployed: {}", hex::encode(r.0));
-            tokio::time::sleep(Duration::from_secs(BLOCK_WAIT_SECS)).await;
+            tokio::time::sleep(Duration::from_secs(block_wait_secs())).await;
         }
         Err(e) => println!("  Deploy skipped (already deployed): {}", e),
     }
