@@ -78,11 +78,6 @@ jobs:
           find . -name "Cargo.toml" | xargs sed -i -E \
             's#(git = "https://github.com/logos-co/spel\.git"), (branch|rev|tag) = "[^"]*"#\1, rev = "${{ steps.spel.outputs.sha }}"#g'
 
-      - name: Install logos-blockchain-circuits
-        run: |
-          curl -sSL https://raw.githubusercontent.com/logos-blockchain/logos-blockchain/main/scripts/setup-logos-blockchain-circuits.sh | bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install spel-client-gen
         run: |
@@ -190,18 +185,13 @@ jobs:
             rzup install r0vm ${{ env.RISC0_VERSION }} && break
             sleep 15
           done
-          rzup install rust
+          rzup install rust 1.91.1  # selects risczero/risc0-guest-builder:r0.1.91.1, the image the deployed ImageID was built in
 
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: "spel-compat-e2e"
           cache-targets: true
 
-      - name: Install logos-blockchain-circuits
-        run: |
-          curl -sSL https://raw.githubusercontent.com/logos-blockchain/logos-blockchain/main/scripts/setup-logos-blockchain-circuits.sh | bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install spel-client-gen
         run: |
