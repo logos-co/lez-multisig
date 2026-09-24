@@ -124,11 +124,11 @@ mod multisig_queries {
     use crate::{compute_proposal_pda, compute_multisig_state_pda};
     use nssa_core::account::AccountId;
 
-    fn load_wallet(v: &Value) -> Result<WalletCore, String> {
+    async fn load_wallet(v: &Value) -> Result<WalletCore, String> {
         if let Some(p) = v["wallet_path"].as_str() {
-            std::env::set_var("NSSA_WALLET_HOME_DIR", p);
+            std::env::set_var(wallet::HOME_DIR_ENV_VAR, p);
         }
-        WalletCore::from_env().map_err(|e| format!("wallet: {}", e))
+        WalletCore::from_env().await.map_err(|e| format!("wallet: {}", e))
     }
 
     fn parse_program_id_hex(s: &str) -> Result<nssa_core::program::ProgramId, String> {
@@ -167,7 +167,7 @@ mod multisig_queries {
         };
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async move {
-            let wallet = load_wallet(&v)?;
+            let wallet = load_wallet(&v).await?;
             let program_id = parse_program_id_hex(v["program_id_hex"].as_str().ok_or("missing program_id_hex")?)?;
             let ms_id = parse_account(v["multisig_state"].as_str().ok_or("missing multisig_state")?)?;
             let state: MultisigState = match fetch_borsh(&wallet, ms_id).await? {
@@ -200,7 +200,7 @@ mod multisig_queries {
         };
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async move {
-            let wallet = load_wallet(&v)?;
+            let wallet = load_wallet(&v).await?;
             let program_id = parse_program_id_hex(v["program_id_hex"].as_str().ok_or("missing program_id_hex")?)?;
             let create_key_hex = v["create_key"].as_str().ok_or("missing create_key")?;
             let create_key_bytes = hex::decode(create_key_hex.trim_start_matches("0x"))

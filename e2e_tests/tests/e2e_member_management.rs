@@ -18,7 +18,7 @@ use nssa::{
 use multisig_core::{Instruction, MultisigState, Proposal, ProposalStatus};
 use lez_multisig_ffi::{compute_multisig_state_pda, compute_proposal_pda};
 use sequencer_service_rpc::{SequencerClient, SequencerClientBuilder, RpcClient as _};
-use common::transaction::NSSATransaction;
+use common::transaction::LeeTransaction;
 
 const BLOCK_WAIT_SECS: u64 = 15;
 
@@ -34,7 +34,7 @@ fn sequencer_client() -> SequencerClient {
 }
 
 async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
-    let response = client.send_transaction(NSSATransaction::Public(tx)).await.expect("Failed to submit tx");
+    let response = client.send_transaction(LeeTransaction::Public(tx)).await.expect("Failed to submit tx");
     let tx_hash = response;
     println!("  tx_hash: {}", hex::encode(tx_hash.0));
 
@@ -61,7 +61,7 @@ async fn submit_tx(client: &SequencerClient, tx: PublicTransaction) {
 /// Submit a tx that we expect to fail (not get included).
 /// Returns true if it was correctly rejected/not included.
 async fn submit_tx_expect_failure(client: &SequencerClient, tx: PublicTransaction) -> bool {
-    match client.send_transaction(NSSATransaction::Public(tx)).await {
+    match client.send_transaction(LeeTransaction::Public(tx)).await {
         Err(_) => {
             println!("  ✅ Transaction rejected at submission (expected)");
             return true;
@@ -104,7 +104,7 @@ async fn get_proposal(client: &SequencerClient, proposal_id: AccountId) -> Propo
 }
 
 fn deploy_program(bytecode: Vec<u8>) -> (ProgramDeploymentTransaction, nssa::ProgramId) {
-    let program = Program::new(bytecode.clone()).expect("Invalid program");
+    let program = Program::new(bytecode.clone().into()).expect("Invalid program");
     let program_id = program.id();
     let msg = nssa::program_deployment_transaction::Message::new(bytecode);
     (ProgramDeploymentTransaction::new(msg), program_id)
@@ -183,7 +183,7 @@ async fn test_member_management() {
         .unwrap_or_else(|_| panic!("Cannot read multisig binary at '{}'", multisig_path));
     let (deploy_tx, program_id) = deploy_program(multisig_bytecode);
 
-    match client.send_transaction(NSSATransaction::ProgramDeployment(deploy_tx)).await {
+    match client.send_transaction(LeeTransaction::ProgramDeployment(deploy_tx)).await {
         Ok(r) => {
             println!("  Deployed: {}", hex::encode(r.0));
             tokio::time::sleep(Duration::from_secs(BLOCK_WAIT_SECS)).await;
